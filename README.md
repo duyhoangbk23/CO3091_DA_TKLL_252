@@ -141,6 +141,7 @@ IOT_RTOS_Project/
 │   │   
 │   │
 │   └── docker/
+|       ├── README.md
 │       └── docker-compose.yml
 │
 ├── common/                           # CONTRACT CHUNG
