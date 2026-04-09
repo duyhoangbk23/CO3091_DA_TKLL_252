@@ -22,6 +22,7 @@ Từ Web về ESP32:  Web → API → Backend → MQTT → ESP32 → Device
 
 
 Cấu trúc thư mục 
+```text
 
 IOT_RTOS_Project/
 │
