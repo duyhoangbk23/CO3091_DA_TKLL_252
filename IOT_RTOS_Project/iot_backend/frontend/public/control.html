@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Control - Device Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-toggle-on"></i> Device Control
+            </span>
+            <span class="badge bg-success" id="connection-status">Connected</span>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-4">
+        <!-- Page Title -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-primary">Device Management</h1>
+                <p class="text-muted">Send commands to connected devices</p>
+            </div>
+        </div>
+
+        <!-- Device Information -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-info-circle"></i> Active Device
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Device ID:</strong> <span id="device-id">esp32_sensor_001</span></p>
+                                <p><strong>Status:</strong> <span class="badge bg-success">Online</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Last Update:</strong> <span id="last-update">-</span></p>
+                                <p><strong>Command Queue:</strong> <span class="badge bg-info" id="queue-count">0</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Control Panel -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-sliders-h"></i> Command Interface
+                    </div>
+                    <div class="card-body">
+                        <form id="command-form">
+                            <div class="mb-3">
+                                <label for="device-select" class="form-label">Target Device</label>
+                                <select id="device-select" class="form-select" required>
+                                    <option value="esp32_sensor_001" selected>ESP32 Sensor 001</option>
+                                    <option value="esp32_sensor_002">ESP32 Sensor 002</option>
+                                    <option value="esp32_sensor_003">ESP32 Sensor 003</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="command-select" class="form-label">Command</label>
+                                <select id="command-select" class="form-select" required>
+                                    <option value="">-- Select Command --</option>
+                                    <option value="ON">Turn ON</option>
+                                    <option value="OFF">Turn OFF</option>
+                                    <option value="RESET">Reset Device</option>
+                                    <option value="CALIBRATE">Calibrate Sensors</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-send"></i> Send Command
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Commands -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-bolt"></i> Quick Commands
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-lg" onclick="sendQuickCommand('ON')">
+                                <i class="fas fa-power-off"></i> Turn ON
+                            </button>
+                            <button class="btn btn-danger btn-lg" onclick="sendQuickCommand('OFF')">
+                                <i class="fas fa-power-off"></i> Turn OFF
+                            </button>
+                            <button class="btn btn-warning btn-lg" onclick="sendQuickCommand('RESET')">
+                                <i class="fas fa-redo"></i> Reset Device
+                            </button>
+                            <button class="btn btn-secondary btn-lg" onclick="sendQuickCommand('CALIBRATE')">
+                                <i class="fas fa-tools"></i> Calibrate Sensors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Response/Status -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-history"></i> Command History
+                    </div>
+                    <div class="card-body">
+                        <div id="command-history" style="max-height: 300px; overflow-y: auto;">
+                            <p class="text-muted">No commands sent yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Response Display -->
+        <div class="row mb-4" id="response-container" style="display: none;">
+            <div class="col-md-12">
+                <div class="alert" id="response-alert" role="alert">
+                    <strong>Response:</strong> <span id="response-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Settings -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-cog"></i> Device Settings
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="sampling-rate" class="form-label">Sampling Rate (seconds)</label>
+                                    <input type="number" class="form-control" id="sampling-rate" value="2" min="1" max="60">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="alert-temp" class="form-label">Temperature Alert (°C)</label>
+                                    <input type="number" class="form-control" id="alert-temp" value="35" min="0" max="100">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="alert-humidity" class="form-label">Humidity Alert (% RH)</label>
+                                    <input type="number" class="form-control" id="alert-humidity" value="80" min="0" max="100">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveSettings()">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="btn-group d-flex gap-2" role="group">
+                    <a href="index.html" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Back to Dashboard
+                    </a>
+                    <a href="analytics.html" class="btn btn-info">
+                        <i class="fas fa-chart-line"></i> View History
+                    </a>
+                    <button class="btn btn-danger" onclick="clearHistory()">
+                        <i class="fas fa-trash"></i> Clear History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p class="mb-0">IoT Monitoring System v1.0.0 | <span id="footer-time">-</span></p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/services/api.js"></script>
+    <script src="js/control.js"></script>
+</body>
+</html>
