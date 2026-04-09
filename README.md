@@ -143,7 +143,8 @@ IOT_RTOS_Project/
 │   └── docker/
 │       └── docker-compose.yml
 │
-├── common/                           # CONTRACT CHUNG 
+├── common/                           # CONTRACT CHUNG
+|   ├── README.md  
 │   ├── mqtt_topics.h
 │   ├── data_format.json
 │   └── api_spec.md
