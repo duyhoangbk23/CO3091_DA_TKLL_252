@@ -23,143 +23,141 @@ Từ Web về ESP32:  Web → API → Backend → MQTT → ESP32 → Device
 
 Cấu trúc thư mục 
 
-IOT\_RTOS\_Project/
-
+IOT_RTOS_Project/
 │
-
-├── hardware/  # Hardware Engineering
-
-|	├──Readme.md
-
-|	├── drivers/
-
-|	│   ├── dht\_sensor.c
-
-|	│   ├── dht\_sensor.h
-
-|	│   ├── led.c
-
-|	│   └── led.h
-
-|	│
-
-|	├── config/
-
-|	│   └── pin\_config.h
-
-|	│
-
-|	└── test/
-
-|	    └── test\_sensor.c            
-
+├── hardware/                         # Hardware Engineering
+│   ├── README.md
+│   │
+│   ├── drivers/                      # driver trực tiếp
+│   │   ├── dht_sensor.c
+│   │   ├── dht_sensor.h
+│   │   ├── led.c
+│   │   └── led.h
+│   │
+│   ├── hal/                          # abstraction layer (QUAN TRỌNG)
+│   │   ├── device_interface.h
+│   │   └── device_interface.c
+│   │
+│   ├── config/
+│   │   └── pin_config.h
+│   │
+│   └── test/
+│       ├── test_sensor.c
+│       └── test_led.c
 │
-
-├── rtos/ # RTOS Engineering
-
-|	├──Readme.md
-
-|	├── tasks/
-
-|	│   ├── task\_sensor.c
-
-|	│   ├── task\_process.c
-
-|	│   ├── task\_mqtt.c
-
-|	│   └── task\_control.c
-
-|	│
-
-|	├── queue/
-
-|	│   └── data\_queue.c
-
-|	│
-
-|	├── mqtt/
-
-|	│   └── mqtt\_client.c
-
-|	│
-
-|	├── main.c
-
-|	└── config.h                   
-
+├── rtos/                             # RTOS Engineering
+│   ├── README.md
+│   │
+│   ├── tasks/
+│   │   ├── task_sensor.c
+│   │   ├── task_sensor.h
+│   │   ├── task_process.c
+│   │   ├── task_process.h
+│   │   ├── task_mqtt.c
+│   │   ├── task_mqtt.h
+│   │   ├── task_control.c
+│   │   └── task_control.h
+│   │
+│   ├── queue/
+│   │   ├── data_queue.c
+│   │   └── data_queue.h
+│   │
+│   ├── mqtt/
+│   │   ├── mqtt_client.c
+│   │   └── mqtt_client.h
+│   │
+│   ├── config/
+│   │   └── config.h
+│   │
+│   ├── main.c
+│   │
+│   └── test/
+│       ├── test_tasks.c
+│       └── test_queue.c
 │
-
-├──iot\_backend/  # IoT + Backend + Webserver
-
-|	├──Readme.md
-
-|	├── backend/
-
-|	│   	├── src/
-
-|	│   	│   ├── server.js
-
-|	│   	│   ├── mqtt/
-
-|	│   	│   │   └── mqttClient.js
-
-|	│   	│   ├── routes/
-
-|	│   	│   │   └── api.js
-
-|	│   	│   ├── controllers/
-
-|	│   	│   ├── services/
-
-|	│   	│   │   └── dbService.js
-
-|	│   	│   └── models/
-
-|	│   	│       └── sensorModel.js
-
-|	│   	│
-
-|	│   	└── package.json
-
-|	├──frontend/
-
-|	|	└── public/
-
-|	|	    ├── index.html        # Dashboard
-
-|    	|	    ├── analytics.html    # History
-
-|    	|	    ├── control.html      # Control
-
-|    	|	    ├── js/
-
-|    	|	    │   ├── dashboard.js
-
-|    	|	    │   ├── analytics.js
-
-|    	|	    │   └── control.js
-
-|    	|	    └── css/
-
-|       |     	    └── style.css
-
-|	├── database/
-
-|	│   └── influx\_setup.md
-
-|	│
-
-|	└── docker/
-
-|	    └── docker-compose.yml
-
-├──intergration\_test/
-
-|	├──test\_pipeline.js         
-
-│		└──test\_control\_flow
-
-├── docs/                    # báo cáo
-
+├── iot_backend/                      # IoT + Backend + Webserver
+│   │
+│   ├── backend/
+|   |   ├── README.md
+│   │   ├── src/
+│   │   │   ├── server.js
+│   │   │   │
+│   │   │   ├── mqtt/
+│   │   │   │   └── mqttClient.js
+│   │   │   │
+│   │   │   ├── routes/
+│   │   │   │   └── api.js
+│   │   │   │
+│   │   │   ├── controllers/
+│   │   │   │   ├── dataController.js
+│   │   │   │   └── controlController.js
+│   │   │   │
+│   │   │   ├── services/
+│   │   │   │   ├── dbService.js
+│   │   │   │   └── mqttService.js
+│   │   │   │
+│   │   │   ├── models/
+│   │   │   │   └── sensorModel.js
+│   │   │   │
+│   │   │   └── utils/
+│   │   │       └── logger.js
+│   │   │
+│   │   ├── test/
+│   │   │   ├── api.test.js
+│   │   │   └── mqtt.test.js
+│   │   │
+│   │   ├── package.json
+│   │   └── .env
+│   │
+│   ├── frontend/
+|   |   ├── README.md
+│   │   ├── public/
+│   │   │   ├── index.html
+│   │   │   ├── analytics.html
+│   │   │   ├── control.html
+│   │   │   │
+│   │   │   ├── js/
+│   │   │   │   ├── dashboard.js
+│   │   │   │   ├── analytics.js
+│   │   │   │   ├── control.js
+│   │   │   │   └── services/
+│   │   │   │       └── api.js        # gọi API tập trung
+│   │   │   │
+│   │   │   ├── css/
+│   │   │   │   └── style.css
+│   │   │   │
+│   │   │   └── components/           # (optional nâng cao)
+│   │   │
+│   │   └── test/
+│   │       └── ui.test.js
+│   │
+│   ├── database/
+|   |   ├── README.md
+|   |   ├── schema.sql          # tạo bảng
+|   |   ├── seed.sql            # (optional) dữ liệu mẫu
+|   |   └── config/
+|   |       └── db.config.js    # config kết nối MySQL
+│   │   
+│   │
+│   └── docker/
+│       └── docker-compose.yml
+│
+├── common/                           # CONTRACT CHUNG 
+│   ├── mqtt_topics.h
+│   ├── data_format.json
+│   └── api_spec.md
+│
+├── integration_test/                 # test toàn hệ thống
+│   ├── test_pipeline.js
+│   └── test_control_flow.js
+│
+├── docs/
+│   ├── report.docx
+│   ├── diagrams/
+│   └── images/
+│
+├── scripts/
+│   └── mock_data.js
+│
 └── README.md
 

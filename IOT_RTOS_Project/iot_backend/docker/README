@@ -1,0 +1,61 @@
+# Docker Setup
+
+## Mục tiêu
+
+* Chạy nhanh toàn bộ hệ thống (MQTT + DB)
+* Không cần cài thủ công từng service
+
+---
+
+## Thành phần
+
+* MQTT Broker (Mosquitto)
+* InfluxDB
+
+---
+
+## File sử dụng
+
+* docker-compose.yml
+
+---
+
+## Cách chạy
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Kiểm tra service
+
+### MQTT
+
+* Port: 1883
+
+### InfluxDB
+
+* http://localhost:8086
+
+---
+
+## Dừng container
+
+```bash
+docker-compose down
+```
+
+---
+
+## Test
+
+* ESP32 publish MQTT → backend nhận được
+* Backend ghi DB → truy cập được InfluxDB
+
+---
+
+## Lưu ý
+
+* Đảm bảo Docker đã cài
+* Kiểm tra port không bị trùng
