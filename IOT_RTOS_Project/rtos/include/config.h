@@ -19,8 +19,12 @@
 #define LED_YELLOW  27    // Cảnh báo [cite: 29]
 #define LED_GREEN   32    // Trạng thái bình thường [cite: 30]
 
-#define MQTT_SERVER "broker.hivemq.com"
+#define MQTT_SERVER "localhost"
 #define MQTT_PORT   1883
+
+#define MQTT_TOPIC_PUBLISH  "sensor/esp32/data"     // ESP32 -> Backend
+#define MQTT_TOPIC_STATUS   "sensor/esp32/status"   // GET_STATUS response
+#define MQTT_TOPIC_COMMAND  "sensor/esp32/command"  // Backend -> ESP32
 
 #define WIFI_SSID "Ten_Wifi"
 #define WIFI_PASS "Mat_Khau_Wifi"

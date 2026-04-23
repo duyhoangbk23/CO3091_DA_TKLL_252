@@ -37,7 +37,7 @@ static void publishStatusReport() {
     );
 
     if (mqttClient.connected()) {
-        mqttClient.publish("hcmut/danh/status", report);
+        mqttClient.publish(MQTT_TOPIC_STATUS, report);
         Serial.println("[Control] Da gui bao cao trang thai len MQTT.");
     } else {
         Serial.println("[Control] MQTT chua ket noi, khong the gui bao cao.");

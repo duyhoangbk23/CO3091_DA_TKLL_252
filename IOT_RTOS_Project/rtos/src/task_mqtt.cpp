@@ -45,7 +45,7 @@ void mqtt_reconnect() {
 
         if (mqttClient.connect(clientId.c_str())) {
             Serial.println("Thành công!");
-            mqttClient.subscribe("hcmut/danh/command");
+            mqttClient.subscribe(MQTT_TOPIC_COMMAND);
         } else {
             Serial.printf("Thất bại, rc=%d - Thu lai sau 5s\n", mqttClient.state());
             vTaskDelay(pdMS_TO_TICKS(5000));
@@ -83,7 +83,7 @@ void vTaskMQTT(void *pvParameters) {
                              localData.air_quality, localData.alert_level,
                              localData.timestamp);
                     
-                    mqttClient.publish("hcmut/danh/sensors", msg);
+                    mqttClient.publish(MQTT_TOPIC_PUBLISH, msg);
                 }
             }
         }

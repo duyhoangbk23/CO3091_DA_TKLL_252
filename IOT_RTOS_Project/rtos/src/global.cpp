@@ -9,7 +9,7 @@ PubSubClient mqttClient(espClient);
 QueueHandle_t xSensorQueue = NULL;
 SemaphoreHandle_t xDataMutex = NULL;
 SemaphoreHandle_t xAlertSem = NULL;
-
+QueueHandle_t xControlQueue = NULL;  
 void init_system_resources() {
     // Khởi tạo các tài nguyên RTOS
     xSensorQueue = xQueueCreate(5, sizeof(SensorData_t));

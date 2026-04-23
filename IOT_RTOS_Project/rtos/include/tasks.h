@@ -20,5 +20,5 @@ void vTaskMQTT(void *pvParameters);
 
 // 6. Task nhận lệnh từ Dashboard qua Queue và thực thi (MUTE_ALARM, TEST_LED, REBOOT)
 void vTaskControl(void *pvParameters);
-
+void vTaskRunAllTests(void *pvParameters);
 #endif // TASKS_H
