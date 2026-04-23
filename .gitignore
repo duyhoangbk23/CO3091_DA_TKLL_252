@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+**/.env
+
+# Logs
+logs/
+*.log
+**/logs/
+**/*.log
+
+# OS generated files
+.DS_Store
+Thumb.db
+**/.DS_Store
+**/Thumb.db
+
+# IDE files
+.vscode/
+.idea/
+**/.vscode/
+**/.idea/

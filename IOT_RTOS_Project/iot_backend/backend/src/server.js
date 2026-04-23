@@ -9,6 +9,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
+const mqttClient = require('./mqtt/mqttClient');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,33 +41,27 @@ async function initializeDatabase() {
     }
 }
 
-// ==================== MOCK DATA GENERATOR ====================
+// ==================== REAL DATA HANDLING ====================
 let latestData = {
     device_id: 'esp32_sensor_001',
-    temperature: 25.5,
-    humidity: 60.0,
+    temperature: 0,
+    humidity: 0,
+    air_quality: 0,
+    alert_level: 0,
     timestamp: new Date().toISOString(),
     status: 'online'
 };
 
-function generateMockData() {
-    // Simulate sensor readings with slight variation
-    const baseTemp = 25;
-    const baseHumidity = 60;
-    const tempVariation = (Math.random() - 0.5) * 4; // ±2°C
-    const humidityVariation = (Math.random() - 0.5) * 10; // ±5%
-
+// This function will be called whenever new MQTT data arrives
+function handleNewData(data) {
     latestData = {
-        device_id: 'esp32_sensor_001',
-        temperature: parseFloat((baseTemp + tempVariation).toFixed(1)),
-        humidity: parseFloat((baseHumidity + humidityVariation).toFixed(1)),
-        timestamp: new Date().toISOString(),
+        ...data,
         status: 'online'
     };
+    
+    console.log(`📊 MQTT Data received: ${latestData.temperature}°C, ${latestData.humidity}% RH, AQI: ${latestData.air_quality}`);
 
-    console.log(`📊 Mock data updated: ${latestData.temperature}°C, ${latestData.humidity}% RH`);
-
-    // Save to database asynchronously
+    // Save to database
     if (db) {
         saveSensorDataToDatabase(latestData).catch(err => {
             console.error('Failed to save to DB:', err.message);
@@ -73,8 +69,6 @@ function generateMockData() {
     }
 }
 
-// Update mock data every 2 seconds
-setInterval(generateMockData, 2000);
 
 // ==================== DATABASE OPERATIONS ====================
 async function saveSensorDataToDatabase(data) {
@@ -169,38 +163,55 @@ app.post('/api/control', async (req, res) => {
         });
     }
 
-    // Simulate command processing
-    const validCommands = ['ON', 'OFF', 'RESET', 'CALIBRATE'];
-    if (!validCommands.includes(command.toUpperCase())) {
+    // RTOS expects specific plain text commands
+    // Mapping frontend commands to RTOS commands if needed, 
+    // but here we allow passing the command directly as specified in RTOS
+    const rtosCommands = [
+        'MUTE_ALARM', 'TEST_LED', 'REBOOT', 
+        'LED_RED_ON', 'LED_RED_OFF', 'LED_YLW_ON', 'LED_YLW_OFF', 'LED_GRN_ON', 'LED_GRN_OFF',
+        'BLINK_RED', 'BLINK_YLW', 'BLINK_GRN', 'GET_STATUS'
+    ];
+
+    const finalCommand = command.toUpperCase();
+
+    if (!rtosCommands.includes(finalCommand)) {
         return res.status(400).json({
             success: false,
-            error: 'Invalid command. Valid: ' + validCommands.join(', ')
+            error: 'Invalid command. Valid RTOS commands: ' + rtosCommands.join(', ')
         });
     }
 
     try {
-        // Log control command to database (optional)
+        // Publish to MQTT
+        const published = mqttClient.publishCommand(finalCommand);
+
+        if (!published) {
+            throw new Error('MQTT client not connected');
+        }
+
+        // Log control command to database
         if (db) {
             const query = 'INSERT INTO control_log (device_id, command, status) VALUES (?, ?, ?)';
-            await db.query(query, [device_id, command, 'completed']);
+            await db.query(query, [device_id, finalCommand, 'sent']);
         }
 
         res.json({
             success: true,
-            message: `Command "${command}" sent to device "${device_id}"`,
+            message: `Command "${finalCommand}" sent to device "${device_id}" via MQTT`,
             result: {
                 device_id: device_id,
-                command: command.toUpperCase(),
-                status: 'executed',
+                command: finalCommand,
+                status: 'sent',
                 timestamp: new Date().toISOString()
             }
         });
     } catch (err) {
         res.status(500).json({
             success: false,
-            error: 'Failed to execute command'
+            error: 'Failed to send command: ' + err.message
         });
     }
+
 });
 
 /**
@@ -274,15 +285,17 @@ app.use((req, res) => {
 // ==================== SERVER STARTUP ====================
 async function startServer() {
     await initializeDatabase();
+    mqttClient.init(handleNewData);
 
     app.listen(PORT, () => {
         console.log('\n' + '='.repeat(50));
-        console.log('🚀 IoT Backend Server');
+        console.log('🚀 IoT Backend Server (RTOS Synchronized)');
         console.log('='.repeat(50));
         console.log(`✓ Server running on port ${PORT}`);
-        console.log(`📊 Mock data generator: ACTIVE (2s interval)`);
+        console.log(`📊 MQTT Listener: ACTIVE`);
         console.log(`🔗 API Base URL: http://localhost:${PORT}`);
         console.log('='.repeat(50) + '\n');
+
 
         // Test endpoints
         console.log('📋 Available endpoints:');
