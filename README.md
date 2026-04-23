@@ -22,6 +22,7 @@ Từ Web về ESP32:  Web → API → Backend → MQTT → ESP32 → Device
 
 
 Cấu trúc thư mục 
+```text
 
 IOT_RTOS_Project/
 │
@@ -140,9 +141,11 @@ IOT_RTOS_Project/
 │   │   
 │   │
 │   └── docker/
+|       ├── README.md
 │       └── docker-compose.yml
 │
-├── common/                           # CONTRACT CHUNG 
+├── common/                           # CONTRACT CHUNG
+|   ├── README.md  
 │   ├── mqtt_topics.h
 │   ├── data_format.json
 │   └── api_spec.md
@@ -160,4 +163,5 @@ IOT_RTOS_Project/
 │   └── mock_data.js
 │
 └── README.md
+...
 
