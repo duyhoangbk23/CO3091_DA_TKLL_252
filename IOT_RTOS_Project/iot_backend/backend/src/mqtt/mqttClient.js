@@ -3,9 +3,9 @@ require('dotenv').config();
 
 // Configuration
 const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-const TOPIC_DATA = 'sensor/esp32/data';
-const TOPIC_STATUS = 'sensor/esp32/status';
-const TOPIC_COMMAND = 'sensor/esp32/command';
+const TOPIC_DATA = 'iot/sensor/data';
+const TOPIC_CONTROL = 'iot/device/control';
+
 
 let client = null;
 let latestData = null;
@@ -23,30 +23,26 @@ function init(onDataReceived) {
 
     client.on('connect', () => {
         console.log('✓ Connected to MQTT Broker: ' + brokerUrl);
-        client.subscribe([TOPIC_DATA, TOPIC_STATUS], (err) => {
+        client.subscribe(TOPIC_DATA, (err) => {
             if (!err) {
-                console.log(`✓ Subscribed to topics: ${TOPIC_DATA}, ${TOPIC_STATUS}`);
+                console.log(`✓ Subscribed to topic: ${TOPIC_DATA}`);
             }
         });
     });
+
 
     client.on('message', (topic, message) => {
         try {
             const rawData = JSON.parse(message.toString());
             console.log(`📩 MQTT Message [${topic}]:`, rawData);
 
-            if (topic === TOPIC_DATA || (topic === TOPIC_STATUS && rawData.type === 'status_report')) {
-                // Map RTOS format -> Internal backend format
-                // RTOS: { temp, humi, aqi, alert, ts }
-                // Internal: { temperature, humidity, air_quality, alert_level, timestamp, device_id }
-                
+            if (topic === TOPIC_DATA) {
+                // New Protocol Format: { temperature, humidity }
                 const mappedData = {
-                    device_id: 'esp32_sensor_001', // Fixed ID for now as per RTOS behavior
-                    temperature: rawData.temp,
-                    humidity: rawData.humi,
-                    air_quality: rawData.aqi,
-                    alert_level: rawData.alert || 0,
-                    timestamp: new Date().toISOString() // Use server time for database consistency
+                    device_id: 'esp32_device', 
+                    temperature: rawData.temperature,
+                    humidity: rawData.humidity,
+                    timestamp: new Date().toISOString()
                 };
 
                 latestData = mappedData;
@@ -60,6 +56,7 @@ function init(onDataReceived) {
         }
     });
 
+
     client.on('error', (err) => {
         console.error('✗ MQTT Error:', err.message);
     });
@@ -68,19 +65,21 @@ function init(onDataReceived) {
 }
 
 /**
- * Publish control command to RTOS
- * @param {string} command Plain text command (e.g., 'LED_RED_ON')
+ * Publish control command to Device
+ * @param {string} state 'ON' or 'OFF'
  */
-function publishCommand(command) {
+function publishControl(state) {
     if (!client || !client.connected) {
         console.error('✗ Cannot publish: MQTT client not connected');
         return false;
     }
 
-    console.log(`📤 Sending Command to RTOS: [${command}]`);
-    client.publish(TOPIC_COMMAND, command);
+    const payload = JSON.stringify({ led: state });
+    console.log(`📤 Sending Control to Device: ${payload}`);
+    client.publish(TOPIC_CONTROL, payload);
     return true;
 }
+
 
 /**
  * Get the latest received data
@@ -91,6 +90,7 @@ function getLatestData() {
 
 module.exports = {
     init,
-    publishCommand,
+    publishControl,
     getLatestData
 };
+

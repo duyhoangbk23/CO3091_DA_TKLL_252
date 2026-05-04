@@ -73,11 +73,9 @@
                             <div class="mb-3">
                                 <label for="command-select" class="form-label">Command</label>
                                 <select id="command-select" class="form-select" required>
-                                    <option value="">-- Select Command --</option>
-                                    <option value="ON">Turn ON</option>
-                                    <option value="OFF">Turn OFF</option>
-                                    <option value="RESET">Reset Device</option>
-                                    <option value="CALIBRATE">Calibrate Sensors</option>
+                                    <option value="ON">Turn LED ON</option>
+                                    <option value="OFF">Turn LED OFF</option>
+
                                 </select>
                             </div>
 
@@ -98,17 +96,12 @@
                     <div class="card-body">
                         <div class="d-grid gap-2">
                             <button class="btn btn-success btn-lg" onclick="sendQuickCommand('ON')">
-                                <i class="fas fa-power-off"></i> Turn ON
+                                <i class="fas fa-power-off"></i> Turn LED ON
                             </button>
                             <button class="btn btn-danger btn-lg" onclick="sendQuickCommand('OFF')">
-                                <i class="fas fa-power-off"></i> Turn OFF
+                                <i class="fas fa-power-off"></i> Turn LED OFF
                             </button>
-                            <button class="btn btn-warning btn-lg" onclick="sendQuickCommand('RESET')">
-                                <i class="fas fa-redo"></i> Reset Device
-                            </button>
-                            <button class="btn btn-secondary btn-lg" onclick="sendQuickCommand('CALIBRATE')">
-                                <i class="fas fa-tools"></i> Calibrate Sensors
-                            </button>
+
                         </div>
                     </div>
                 </div>

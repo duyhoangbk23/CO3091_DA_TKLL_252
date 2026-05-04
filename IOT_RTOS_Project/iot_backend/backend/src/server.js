@@ -43,14 +43,14 @@ async function initializeDatabase() {
 
 // ==================== REAL DATA HANDLING ====================
 let latestData = {
-    device_id: 'esp32_sensor_001',
+    device_id: 'esp32_device',
     temperature: 0,
     humidity: 0,
-    air_quality: 0,
-    alert_level: 0,
+    
     timestamp: new Date().toISOString(),
     status: 'online'
 };
+
 
 // This function will be called whenever new MQTT data arrives
 function handleNewData(data) {
@@ -59,7 +59,8 @@ function handleNewData(data) {
         status: 'online'
     };
     
-    console.log(`📊 MQTT Data received: ${latestData.temperature}°C, ${latestData.humidity}% RH, AQI: ${latestData.air_quality}`);
+    console.log(`📊 MQTT Data: Temp: ${latestData.temperature}°C, Humi: ${latestData.humidity}%`);
+
 
     // Save to database
     if (db) {
@@ -163,44 +164,34 @@ app.post('/api/control', async (req, res) => {
         });
     }
 
-    // RTOS expects specific plain text commands
-    // Mapping frontend commands to RTOS commands if needed, 
-    // but here we allow passing the command directly as specified in RTOS
-    const rtosCommands = [
-        'MUTE_ALARM', 'TEST_LED', 'REBOOT', 
-        'LED_RED_ON', 'LED_RED_OFF', 'LED_YLW_ON', 'LED_YLW_OFF', 'LED_GRN_ON', 'LED_GRN_OFF',
-        'BLINK_RED', 'BLINK_YLW', 'BLINK_GRN', 'GET_STATUS'
-    ];
-
-    const finalCommand = command.toUpperCase();
-
-    if (!rtosCommands.includes(finalCommand)) {
+    const state = command.toUpperCase();
+    if (state !== 'ON' && state !== 'OFF') {
         return res.status(400).json({
             success: false,
-            error: 'Invalid command. Valid RTOS commands: ' + rtosCommands.join(', ')
+            error: 'Invalid state. Use ON or OFF'
         });
     }
 
     try {
-        // Publish to MQTT
-        const published = mqttClient.publishCommand(finalCommand);
+        // Publish JSON to MQTT Topic: iot/device/control
+        const published = mqttClient.publishControl(state);
 
         if (!published) {
             throw new Error('MQTT client not connected');
         }
 
-        // Log control command to database
+        // Log to DB
         if (db) {
             const query = 'INSERT INTO control_log (device_id, command, status) VALUES (?, ?, ?)';
-            await db.query(query, [device_id, finalCommand, 'sent']);
+            await db.query(query, [device_id, `LED_${state}`, 'sent']);
         }
 
         res.json({
             success: true,
-            message: `Command "${finalCommand}" sent to device "${device_id}" via MQTT`,
+            message: `Control "${state}" sent to device "${device_id}"`,
             result: {
                 device_id: device_id,
-                command: finalCommand,
+                command: state,
                 status: 'sent',
                 timestamp: new Date().toISOString()
             }
@@ -208,9 +199,10 @@ app.post('/api/control', async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            error: 'Failed to send command: ' + err.message
+            error: 'Failed to send control: ' + err.message
         });
     }
+
 
 });
 

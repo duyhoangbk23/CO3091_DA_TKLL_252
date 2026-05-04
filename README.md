@@ -20,7 +20,7 @@ Từ ESP32 lên web: Sensor → ESP32 → MQTT → Backend → DB → API → We
 Từ Web về ESP32:  Web → API → Backend → MQTT → ESP32 → Device
 
 
-
+,,,
 Cấu trúc thư mục 
 ```text
 
@@ -163,5 +163,9 @@ IOT_RTOS_Project/
 │   └── mock_data.js
 │
 └── README.md
+<<<<<<< HEAD
 ...
 
+=======
+,,,
+>>>>>>> 0ecfde8250ea0434713de267dcfffd77fa4c7101
