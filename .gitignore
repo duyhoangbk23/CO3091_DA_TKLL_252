@@ -4,7 +4,11 @@ node_modules/
 
 # Environment files
 .env
+.env.local
+.env.*.local
 **/.env
+**/.env.local
+**/.env.*.local
 
 # Logs
 logs/
@@ -23,3 +27,23 @@ Thumb.db
 .idea/
 **/.vscode/
 **/.idea/
+
+# Docker volumes (local development)
+mysql_data/
+mosquitto_data/
+mosquitto_logs/
+**/mysql_data/
+**/mosquitto_data/
+**/mosquitto_logs/
+
+# Build outputs
+dist/
+build/
+*.o
+*.a
+coverage/
+.nyc_output/
+
+# Test
+.mocha_timeout
+
