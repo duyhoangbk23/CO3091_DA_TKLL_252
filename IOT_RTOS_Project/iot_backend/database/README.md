@@ -29,6 +29,9 @@ CREATE TABLE sensor_data (
   device_id VARCHAR(50),
   temperature FLOAT,
   humidity FLOAT,
+  air_quality INT DEFAULT 0,
+  alert_level TINYINT DEFAULT 0,
+  timestamp BIGINT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```

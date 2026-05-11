@@ -7,7 +7,7 @@ const logger = require('../logger/winston');
 
 /**
  * Insert sensor data into database
- * @param {object} data - { device_id, temperature, humidity }
+ * @param {object} data - { device_id, temperature, humidity, air_quality, alert_level, timestamp }
  * @returns {Promise<boolean>} Success status
  */
 async function insertSensorData(data) {
@@ -19,10 +19,17 @@ async function insertSensorData(data) {
 
     try {
         const query = `
-            INSERT INTO sensor_data (device_id, temperature, humidity)
-            VALUES (?, ?, ?)
+            INSERT INTO sensor_data (device_id, temperature, humidity, air_quality, alert_level, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
         `;
-        const values = [data.device_id, data.temperature, data.humidity];
+        const values = [
+            data.device_id,
+            data.temperature,
+            data.humidity,
+            data.air_quality || 0,
+            data.alert_level || 0,
+            data.timestamp || Date.now()
+        ];
         await db.query(query, values);
         logger.debug(`Sensor data inserted: ${data.device_id}`);
         return true;
@@ -47,7 +54,7 @@ async function getHistoricalData(limit = 100, hours = 24) {
 
     try {
         const query = `
-            SELECT id, device_id, temperature, humidity, created_at
+            SELECT id, device_id, temperature, humidity, air_quality, alert_level, timestamp, created_at
             FROM sensor_data
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
             ORDER BY created_at DESC
@@ -83,7 +90,13 @@ async function getStatistics(hours = 24) {
                 MIN(temperature) as min_temperature,
                 AVG(humidity) as avg_humidity,
                 MAX(humidity) as max_humidity,
-                MIN(humidity) as min_humidity
+                MIN(humidity) as min_humidity,
+                AVG(air_quality) as avg_air_quality,
+                MAX(air_quality) as max_air_quality,
+                MIN(air_quality) as min_air_quality,
+                AVG(alert_level) as avg_alert_level,
+                MAX(alert_level) as max_alert_level,
+                MIN(alert_level) as min_alert_level
             FROM sensor_data
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
         `;
@@ -112,7 +125,7 @@ async function getLatestByDevice(deviceId) {
         const query = `
             SELECT * FROM sensor_data
             WHERE device_id = ?
-            ORDER BY created_at DESC
+            ORDER BY timestamp DESC
             LIMIT 1
         `;
         const [results] = await db.query(query, [deviceId]);

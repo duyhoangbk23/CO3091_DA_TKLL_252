@@ -3,11 +3,11 @@ const logger = require('../logger/winston');
 
 // In-memory storage for latest data (for real-time MQTT updates)
 let latestData = {
-    device_id: 'esp32_device',
     temperature: 0,
     humidity: 0,
-    timestamp: new Date().toISOString(),
-    status: 'online'
+    air_quality: 0,
+    alert_level: 0,
+    timestamp: Date.now()
 };
 
 /**
@@ -22,17 +22,24 @@ let latestData = {
 async function handleNewSensorData(data) {
     try {
         latestData = {
-            device_id: data.device_id || 'esp32_device',
             temperature: parseFloat(data.temperature),
             humidity: parseFloat(data.humidity),
-            timestamp: data.timestamp || new Date().toISOString(),
-            status: 'online'
+            air_quality: parseInt(data.air_quality, 10) || 0,
+            alert_level: parseInt(data.alert_level, 10) || 0,
+            timestamp: parseInt(data.timestamp, 10) || Date.now()
         };
 
-        logger.info(`📊 New MQTT Data: Temp=${latestData.temperature}°C, Humidity=${latestData.humidity}%`);
+        logger.info(`New MQTT Data: Temp=${latestData.temperature}°C, Humidity=${latestData.humidity}%, AQ=${latestData.air_quality}, Alert=${latestData.alert_level}`);
 
-        // Save to database
-        await sensorModel.insertSensorData(latestData);
+        // Save to database with optional device_id separate from the sensor payload
+        await sensorModel.insertSensorData({
+            device_id: data.device_id || 'esp32_device',
+            temperature: latestData.temperature,
+            humidity: latestData.humidity,
+            air_quality: latestData.air_quality,
+            alert_level: latestData.alert_level,
+            timestamp: latestData.timestamp
+        });
     } catch (error) {
         logger.error(`Error handling new sensor data: ${error.message}`);
     }
@@ -43,10 +50,7 @@ async function handleNewSensorData(data) {
  * @returns {object} Latest sensor data
  */
 function getLatestData() {
-    return {
-        ...latestData,
-        timestamp: new Date().toISOString()
-    };
+    return latestData;
 }
 
 /**

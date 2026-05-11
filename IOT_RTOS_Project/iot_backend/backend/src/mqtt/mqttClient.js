@@ -3,8 +3,8 @@ require('dotenv').config();
 
 // Configuration
 const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-const TOPIC_DATA = 'iot/sensor/data';
-const TOPIC_CONTROL = 'iot/device/control';
+const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || 'iot/sensor/data';
+const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || 'iot/device/control';
 
 
 let client = null;
@@ -42,7 +42,9 @@ function init(onDataReceived) {
                     device_id: 'esp32_device', 
                     temperature: rawData.temperature,
                     humidity: rawData.humidity,
-                    timestamp: new Date().toISOString()
+                    air_quality: rawData.air_quality || 0,
+                    alert_level: rawData.alert_level || 0,
+                    timestamp: parseInt(rawData.timestamp, 10) || Date.now()
                 };
 
                 latestData = mappedData;

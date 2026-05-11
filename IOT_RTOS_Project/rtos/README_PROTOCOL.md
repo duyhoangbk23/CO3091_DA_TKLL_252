@@ -18,12 +18,18 @@ The ESP32 should publish sensor readings to **`iot/sensor/data`** every 1-10 sec
 ```json
 {
   "temperature": 25.5,
-  "humidity": 60.0
+  "humidity": 60.0,
+  "air_quality": 200,
+  "alert_level": 0,
+  "timestamp": 1700000000
 }
 ```
 
 *   `temperature`: floating point number (Celsius)
 *   `humidity`: floating point number (Percentage)
+*   `air_quality`: integer (ppm or device AQI value)
+*   `alert_level`: integer alert level (0 = OK, 1 = WARN, 2 = CRITICAL)
+*   `timestamp`: integer device timestamp (int64)
 
 ---
 

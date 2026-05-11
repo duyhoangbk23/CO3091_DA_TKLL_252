@@ -5,9 +5,9 @@
 {
   "temperature": 28.5,
   "humidity": 65,
-  "light": 320,
-  "pressure": 1012,
-  "timestamp": "2026-05-11T10:00:00Z"
+  "air_quality": 320,
+  "alert_level": 0,
+  "timestamp": 1683830400000
 }
 ```
 

@@ -78,7 +78,7 @@ void vTaskMQTT(void *pvParameters) {
                 xSemaphoreGive(xDataMutex);
                 
                 if (localData.temperature != 0) {
-                    snprintf(msg, 128, "{\"temp\":%.2f, \"humi\":%.2f, \"aqi\":%d, \"alert\":%d, \"ts\":%lld}", 
+                    snprintf(msg, 128, "{\"temperature\":%.2f, \"humidity\":%.2f, \"air_quality\":%d, \"alert_level\":%d, \"timestamp\":%lld}", 
                              localData.temperature, localData.humidity, 
                              localData.air_quality, localData.alert_level,
                              localData.timestamp);

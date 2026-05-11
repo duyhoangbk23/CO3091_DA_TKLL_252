@@ -8,8 +8,12 @@ CREATE TABLE IF NOT EXISTS sensor_data (
     device_id VARCHAR(50) NOT NULL,
     temperature FLOAT NOT NULL,
     humidity FLOAT NOT NULL,
+    air_quality INT NOT NULL DEFAULT 0,
+    alert_level TINYINT NOT NULL DEFAULT 0,
+    timestamp BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_device_id (device_id),
+    INDEX idx_timestamp (timestamp),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
