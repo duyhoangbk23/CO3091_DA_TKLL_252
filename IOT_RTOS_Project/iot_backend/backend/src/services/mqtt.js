@@ -43,13 +43,14 @@ function init(onDataReceived) {
             logger.debug(`📩 MQTT Message [${topic}]:`, rawData);
 
             if (topic === TOPIC_DATA && dataCallback) {
+                const parsedTimestamp = parseInt(rawData.timestamp_ms ?? rawData.timestamp, 10);
                 const mappedData = {
                     device_id: rawData.device_id || 'esp32_device',
                     temperature: rawData.temperature,
                     humidity: rawData.humidity,
                     air_quality: rawData.air_quality || 0,
                     alert_level: rawData.alert_level || 0,
-                    timestamp: parseInt(rawData.timestamp_ms || rawData.timestamp, 10) || Date.now()
+                    timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp
                 };
 
                 dataCallback(mappedData);

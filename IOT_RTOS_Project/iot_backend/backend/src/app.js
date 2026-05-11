@@ -17,7 +17,10 @@ let latestData = {
     device_id:   'esp32_device',
     temperature: 0,
     humidity:    0,
-    timestamp:   new Date().toISOString(),
+    air_quality: 0,
+    alert_level: 0,
+    timestamp_ms: 0,
+    received_at: null,
     status:      'online'
 };
 
@@ -34,14 +37,21 @@ function getLatestData()    { return latestData; }
 // ==================== DB HELPERS ====================
 async function saveSensorData(data) {
     if (!db) return;
-    const q = 'INSERT INTO sensor_data (device_id, temperature, humidity) VALUES (?, ?, ?)';
-    await db.query(q, [data.device_id, data.temperature, data.humidity]);
+    const q = 'INSERT INTO sensor_data (device_id, temperature, humidity, air_quality, alert_level, timestamp) VALUES (?, ?, ?, ?, ?, ?)';
+    await db.query(q, [
+        data.device_id,
+        data.temperature,
+        data.humidity,
+        data.air_quality || 0,
+        data.alert_level || 0,
+        data.timestamp_ms ?? data.timestamp ?? Date.now()
+    ]);
 }
 
 async function getHistoricalData(limit = 100, hours = 24) {
     if (!db) return [];
     const q = `
-        SELECT id, device_id, temperature, humidity, created_at
+        SELECT id, device_id, temperature, humidity, air_quality, alert_level, timestamp AS timestamp_ms, created_at
         FROM sensor_data
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
         ORDER BY created_at DESC

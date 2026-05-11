@@ -34,7 +34,9 @@ beforeEach(() => {
         device_id:   'esp32_device',
         temperature: 0,
         humidity:    0,
-        timestamp:   new Date().toISOString(),
+        air_quality: 0,
+        alert_level: 0,
+        timestamp_ms: 0,
         status:      'online'
     });
 });
@@ -71,10 +73,13 @@ describe('GET /api/data', () => {
     });
 
     test('tra ve du lieu moi nhat sau khi cap nhat latestData', async () => {
-        setLatestData({ device_id: 'esp32_device', temperature: 31.5, humidity: 72.3, timestamp: 'T1' });
+        setLatestData({ device_id: 'esp32_device', temperature: 31.5, humidity: 72.3, air_quality: 310, alert_level: 1, timestamp_ms: 123 });
         const res = await request(app).get('/api/data');
         expect(res.body.data.temperature).toBe(31.5);
         expect(res.body.data.humidity).toBe(72.3);
+        expect(res.body.data.air_quality).toBe(310);
+        expect(res.body.data.alert_level).toBe(1);
+        expect(res.body.data.timestamp_ms).toBe(123);
     });
 
     test('response co truong timestamp', async () => {

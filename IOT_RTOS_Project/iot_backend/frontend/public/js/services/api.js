@@ -20,7 +20,10 @@ async function fetchLatestData() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const result = await response.json();
-        return result.data;
+        return {
+            ...result.data,
+            received_at: result.data.received_at || result.timestamp
+        };
     } catch (error) {
         console.error('Error fetching latest data:', error);
         return null;
@@ -119,7 +122,9 @@ async function checkHealth() {
  * Format timestamp to readable string
  */
 function formatTimestamp(timestamp) {
+    if (!timestamp) return '-';
     const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString();
 }
 

@@ -7,7 +7,7 @@ const logger = require('../logger/winston');
 
 /**
  * Insert sensor data into database
- * @param {object} data - { device_id, temperature, humidity, air_quality, alert_level, timestamp }
+ * @param {object} data - { device_id, temperature, humidity, air_quality, alert_level, timestamp_ms }
  * @returns {Promise<boolean>} Success status
  */
 async function insertSensorData(data) {
@@ -28,7 +28,7 @@ async function insertSensorData(data) {
             data.humidity,
             data.air_quality || 0,
             data.alert_level || 0,
-            data.timestamp || Date.now()
+            data.timestamp_ms ?? data.timestamp ?? Date.now()
         ];
         await db.query(query, values);
         logger.debug(`Sensor data inserted: ${data.device_id}`);
@@ -54,7 +54,7 @@ async function getHistoricalData(limit = 100, hours = 24) {
 
     try {
         const query = `
-            SELECT id, device_id, temperature, humidity, air_quality, alert_level, timestamp, created_at
+            SELECT id, device_id, temperature, humidity, air_quality, alert_level, timestamp AS timestamp_ms, created_at
             FROM sensor_data
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
             ORDER BY created_at DESC

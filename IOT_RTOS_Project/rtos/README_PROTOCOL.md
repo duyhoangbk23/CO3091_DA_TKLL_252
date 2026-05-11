@@ -1,17 +1,14 @@
-# MQTT Protocol for RTOS
+# RTOS MQTT Protocol
 
-Tai lieu nay dinh nghia protocol ESP32 RTOS phai tuan theo de tuong thich voi backend va dashboard.
+## Publish Telemetry
 
-## Topics
+`vTaskMQTT` publish len topic:
 
-| Topic | Direction | Purpose |
-| --- | --- | --- |
-| `iot/sensor/data` | ESP32 -> Backend | Telemetry dinh ky |
-| `iot/device/control` | Backend -> ESP32 | Lenh dieu khien |
+```text
+iot/sensor/data
+```
 
-## Publish Sensor Data
-
-ESP32 publish JSON len `iot/sensor/data` moi 1-10 giay.
+JSON payload:
 
 ```json
 {
@@ -24,19 +21,23 @@ ESP32 publish JSON len `iot/sensor/data` moi 1-10 giay.
 }
 ```
 
-Field:
-- `device_id`: ma thiet bi.
-- `temperature`: nhiet do Celsius.
-- `humidity`: do am %RH.
-- `air_quality`: gia tri MQ-135/AQI dang integer.
-- `alert_level`: `0=OK`, `1=WARN`, `2=CRITICAL`.
-- `timestamp_ms`: milliseconds ke tu khi ESP32 boot.
+Nguon du lieu:
+- `temperature`: DHT22.
+- `humidity`: DHT22.
+- `air_quality`: MQ-135 ADC.
+- `alert_level`: do `vTaskDataProcess` tinh theo nguong trong `config.h`.
+- `timestamp_ms`: `esp_timer_get_time() / 1000`.
+- `device_id`: macro `DEVICE_ID` trong `config.h`.
 
-## Subscribe Controls
+## Subscribe Control
 
-ESP32 subscribe `iot/device/control`.
+ESP32 subscribe topic:
 
-Backend se publish:
+```text
+iot/device/control
+```
+
+Backend publish:
 
 ```json
 {
@@ -46,11 +47,11 @@ Backend se publish:
 }
 ```
 
-Lenh hien tai:
+Lenh chinh:
 - `LED_ON`
 - `LED_OFF`
 
-Firmware cung co the xu ly cac lenh noi bo dang raw string de test bang MQTT client:
+Lenh test/noi bo:
 - `MUTE_ALARM`
 - `TEST_LED`
 - `REBOOT`
@@ -60,9 +61,25 @@ Firmware cung co the xu ly cac lenh noi bo dang raw string de test bang MQTT cli
 - `LED_GRN_ON`, `LED_GRN_OFF`
 - `BLINK_RED`, `BLINK_YLW`, `BLINK_GRN`
 
-## RTOS Requirements
+## Dataflow RTOS
 
-- Dung ArduinoJson de parse JSON control.
-- Co auto-reconnect WiFi va MQTT.
-- Khong dung `localhost` lam MQTT host tren ESP32; dung IP LAN cua may chay Mosquitto/Docker host.
-- Neu muon override cau hinh khi build, dung PlatformIO build flags cho `WIFI_SSID`, `WIFI_PASS`, `MQTT_SERVER`.
+```text
+vTaskSensorRead
+  -> xSensorQueue
+  -> vTaskDataProcess tinh alert_level
+  -> g_LatestData
+  -> vTaskMQTT publish JSON
+```
+
+## Cau Hinh
+
+Trong `config.h`, cap nhat:
+
+```cpp
+#define DEVICE_ID "esp32_device"
+#define MQTT_SERVER "192.168.1.100"
+#define MQTT_TOPIC_PUBLISH "iot/sensor/data"
+#define MQTT_TOPIC_COMMAND "iot/device/control"
+```
+
+Khong dung `localhost` cho ESP32; dung IP LAN cua may chay Mosquitto/Docker host.

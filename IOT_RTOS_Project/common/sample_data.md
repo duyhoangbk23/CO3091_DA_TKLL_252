@@ -1,65 +1,74 @@
-# Mẫu dữ liệu thử nghiệm cho test IoT & RTOS
+# Sample Data
 
-## 1. Mẫu dữ liệu sensor (gửi lên MQTT topic `iot/sensor/data`)
+## MQTT Telemetry
+
+Topic:
+
+```text
+iot/sensor/data
+```
+
+Payload:
+
 ```json
 {
+  "device_id": "esp32_device",
   "temperature": 28.5,
-  "humidity": 65,
+  "humidity": 65.0,
   "air_quality": 320,
   "alert_level": 0,
-  "timestamp": 1683830400000
+  "timestamp_ms": 123456
 }
 ```
 
-## 2. Mẫu dữ liệu điều khiển (gửi lên MQTT topic `iot/device/control`)
+Test publish:
+
+```bash
+mosquitto_pub -h localhost -t iot/sensor/data -m '{"device_id":"esp32_device","temperature":28.5,"humidity":65.0,"air_quality":320,"alert_level":0,"timestamp_ms":123456}'
+```
+
+## MQTT Control
+
+Topic:
+
+```text
+iot/device/control
+```
+
+Payload:
+
 ```json
 {
-  "led": "ON",
-  "fan": "OFF",
-  "buzzer": "ON"
+  "device_id": "esp32_device",
+  "command": "LED_ON",
+  "timestamp": 1710000000000
 }
 ```
 
-## 3. Mẫu dữ liệu sensor cho RTOS test (giả lập gửi từ thiết bị)
-```c
-// C struct giả lập
-struct SensorData {
-    float temperature; // 28.5
-    float humidity;    // 65
-    int light;         // 320
-    int pressure;      // 1012
-    char timestamp[25];// "2026-05-11T10:00:00Z"
-};
+Test publish:
 
-struct SensorData test_data = {
-    28.5, 65, 320, 1012, "2026-05-11T10:00:00Z"
-};
+```bash
+mosquitto_pub -h localhost -t iot/device/control -m '{"device_id":"esp32_device","command":"LED_ON","timestamp":1710000000000}'
 ```
 
-## 4. Mẫu dữ liệu điều khiển cho RTOS test (giả lập nhận lệnh)
-```c
-// C struct giả lập
-struct ControlData {
-    char led[4];    // "ON"
-    char fan[4];    // "OFF"
-    char buzzer[4]; // "ON"
-};
+## API
 
-struct ControlData test_control = {
-    "ON", "OFF", "ON"
-};
+Latest data:
+
+```bash
+curl http://localhost:3000/api/data
 ```
 
-## 5. Hướng dẫn sử dụng mẫu thử
-- Dùng lệnh `mosquitto_pub` để gửi mẫu sensor lên broker:
-  ```sh
-  mosquitto_pub -h localhost -t iot/sensor/data -m '{"temperature":28.5,"humidity":65,"light":320,"pressure":1012,"timestamp":"2026-05-11T10:00:00Z"}'
-  ```
-- Dùng lệnh `mosquitto_pub` để gửi mẫu điều khiển:
-  ```sh
-  mosquitto_pub -h localhost -t iot/device/control -m '{"led":"ON","fan":"OFF","buzzer":"ON"}'
-  ```
-- Trong RTOS, có thể hardcode struct test_data/test_control để kiểm thử luồng xử lý.
+History:
 
----
-Bạn có thể copy các mẫu này vào test tự động hoặc thủ công cho cả backend lẫn firmware RTOS.
+```bash
+curl "http://localhost:3000/api/history?limit=100&hours=24"
+```
+
+Control:
+
+```bash
+curl -X POST http://localhost:3000/api/control \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"esp32_device","command":"ON"}'
+```

@@ -1,42 +1,50 @@
-# Common Contract
+# Common Data Contract
 
-Tai lieu nay la contract chung giua ESP32 RTOS, MQTT broker, backend va frontend.
+Contract nay la nguon tham chieu chung cho RTOS, MQTT, backend, database va web.
 
-## MQTT Topics
+## RTOS -> IoT Backend
 
-| Topic | Direction | Purpose |
-| --- | --- | --- |
-| `iot/sensor/data` | ESP32 -> Backend | Gui telemetry dinh ky |
-| `iot/device/control` | Backend -> ESP32 | Gui lenh dieu khien |
+ESP32 publish telemetry len MQTT topic:
 
-## Sensor Payload
+```text
+iot/sensor/data
+```
 
-ESP32 publish JSON len `iot/sensor/data`:
+Payload bat buoc:
 
 ```json
 {
   "device_id": "esp32_device",
-  "temperature": 30.5,
-  "humidity": 70.0,
-  "air_quality": 280,
-  "alert_level": 1,
+  "temperature": 28.5,
+  "humidity": 65.0,
+  "air_quality": 320,
+  "alert_level": 0,
   "timestamp_ms": 123456
 }
 ```
 
-Quy uoc:
-- `device_id`: ma thiet bi.
-- `temperature`: Celsius.
-- `humidity`: %RH.
-- `air_quality`: gia tri MQ-135/AQI dang integer.
-- `alert_level`: `0=OK`, `1=WARN`, `2=CRITICAL`.
-- `timestamp_ms`: thoi gian tinh bang milliseconds tu luc ESP32 boot.
+Field:
 
-Backend van chap nhan field cu `timestamp`, nhung firmware moi nen dung `timestamp_ms`.
+| Field | Type | Source | Note |
+| --- | --- | --- | --- |
+| `device_id` | string | `DEVICE_ID` trong `config.h` | Mac dinh `esp32_device` |
+| `temperature` | number | DHT22 | Celsius |
+| `humidity` | number | DHT22 | `%RH` |
+| `air_quality` | integer | MQ-135 ADC | Raw ADC value |
+| `alert_level` | integer | `vTaskDataProcess` | `0=OK`, `1=WARN`, `2=CRITICAL` |
+| `timestamp_ms` | integer | `esp_timer_get_time() / 1000` | Milliseconds tu luc ESP32 boot |
 
-## Control Payload
+Trong RTOS, struct `SensorData_t` khong chua `device_id`; `device_id` duoc them khi `vTaskMQTT` serialize JSON.
 
-Backend publish JSON len `iot/device/control`:
+## Backend -> RTOS
+
+Backend publish command len MQTT topic:
+
+```text
+iot/device/control
+```
+
+Payload:
 
 ```json
 {
@@ -46,28 +54,54 @@ Backend publish JSON len `iot/device/control`:
 }
 ```
 
-Lenh tu UI hien tai:
-- `ON` -> backend publish `LED_ON`.
-- `OFF` -> backend publish `LED_OFF`.
+Lenh hien tai:
 
-Firmware van giu fallback de test nhanh bang raw payload nhu `LED_ON`, `LED_OFF`, `GET_STATUS`.
+| API command | MQTT command |
+| --- | --- |
+| `ON` | `LED_ON` |
+| `OFF` | `LED_OFF` |
 
-## HTTP API
+Firmware cung chap nhan raw command de test truc tiep bang MQTT client: `LED_ON`, `LED_OFF`, `GET_STATUS`, `REBOOT`, `MUTE_ALARM`.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/data` | Lay data moi nhat tu RAM backend |
-| `GET` | `/api/history?limit=100&hours=24` | Lay lich su tu MySQL |
-| `GET` | `/api/stats?hours=24` | Lay thong ke |
-| `POST` | `/api/control` | Gui lenh dieu khien |
-| `GET` | `/health/live` | Liveness |
-| `GET` | `/health/ready` | Readiness |
+## Backend API
 
-Vi du control API:
+`GET /api/data` tra ve data moi nhat:
 
 ```json
 {
-  "device_id": "esp32_device",
-  "command": "ON"
+  "success": true,
+  "data": {
+    "device_id": "esp32_device",
+    "temperature": 28.5,
+    "humidity": 65.0,
+    "air_quality": 320,
+    "alert_level": 0,
+    "timestamp_ms": 123456,
+    "received_at": "2026-05-11T08:00:00.000Z",
+    "status": "online"
+  },
+  "timestamp": "2026-05-11T08:00:00.000Z"
 }
+```
+
+Luu y:
+- `timestamp_ms` la thoi gian cua ESP32 tinh tu luc boot.
+- `received_at` va response `timestamp` la thoi gian cua backend/server.
+
+## Database
+
+Bang `sensor_data` luu:
+
+```text
+device_id, temperature, humidity, air_quality, alert_level, timestamp, created_at
+```
+
+Cot DB `timestamp` luu gia tri `timestamp_ms` cua ESP32. Khi API tra history, backend alias cot nay thanh `timestamp_ms`.
+
+## Web
+
+Dashboard va Analytics phai hien thi du 6 field telemetry:
+
+```text
+device_id, temperature, humidity, air_quality, alert_level, timestamp_ms
 ```

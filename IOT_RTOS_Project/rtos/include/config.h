@@ -19,6 +19,10 @@
 #define LED_YELLOW  27    // Cảnh báo [cite: 29]
 #define LED_GREEN   32    // Trạng thái bình thường [cite: 30]
 
+#ifndef DEVICE_ID
+#define DEVICE_ID "esp32_device"
+#endif
+
 #ifndef MQTT_SERVER
 #define MQTT_SERVER "192.168.1.100"  // Thay bang IP LAN cua may chay Mosquitto/Docker host
 #endif
@@ -31,7 +35,7 @@
 #define MQTT_TOPIC_PUBLISH  "iot/sensor/data"     // ESP32 -> Backend
 #endif
 #ifndef MQTT_TOPIC_STATUS
-#define MQTT_TOPIC_STATUS   "sensor/esp32/status"   // GET_STATUS response
+#define MQTT_TOPIC_STATUS   "iot/device/status"    // GET_STATUS response
 #endif
 #ifndef MQTT_TOPIC_COMMAND
 #define MQTT_TOPIC_COMMAND  "iot/device/control"  // Backend -> ESP32

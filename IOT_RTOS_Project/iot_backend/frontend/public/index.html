@@ -24,7 +24,7 @@
         <!-- Page Title -->
         <div class="row mb-4">
             <div class="col-12">
-                <h1 className="text-primary">Real-time Monitoring</h1>
+                <h1 class="text-primary">Real-time Monitoring</h1>
                 <p class="text-muted">Last update: <span id="last-update">-</span></p>
             </div>
         </div>
@@ -44,6 +44,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Connection Time:</strong> <span id="connection-time">-</span></p>
+                                <p><strong>Device Timestamp:</strong> <span id="device-timestamp">-</span> ms</p>
                             </div>
                         </div>
                     </div>
@@ -73,6 +74,30 @@
                         <h5 class="card-title">Humidity</h5>
                         <p class="sensor-value" id="humidity-value">--</p>
                         <p class="text-muted small">% RH | Status: <span id="humidity-status" class="badge bg-info">Reading</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Air Quality -->
+            <div class="col-md-6 mb-4">
+                <div class="card sensor-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-wind fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">Air Quality</h5>
+                        <p class="sensor-value" id="air-quality-value">--</p>
+                        <p class="text-muted small">Raw ADC | Status: <span id="air-quality-status" class="badge bg-info">Reading</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert Level -->
+            <div class="col-md-6 mb-4">
+                <div class="card sensor-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-triangle-exclamation fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">Alert Level</h5>
+                        <p class="sensor-value" id="alert-level-value">--</p>
+                        <p class="text-muted small">0=OK, 1=Warn, 2=Critical | Status: <span id="alert-level-status" class="badge bg-info">Reading</span></p>
                     </div>
                 </div>
             </div>

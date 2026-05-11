@@ -1,101 +1,43 @@
-# Database (MySQL)
+# Database
 
-## Mục tiêu
+MySQL luu lich su telemetry tu MQTT.
 
-* Lưu dữ liệu sensor theo thời gian
-* Phục vụ truy vấn lịch sử
-
----
-
-## Công nghệ
-
-* MySQL
-
----
-
-## Cấu trúc
-
-* `schema.sql`: tạo bảng
-* `seed.sql`: dữ liệu mẫu (optional)
-* `config/`: cấu hình kết nối DB
-
----
-
-## Thiết kế bảng
+## `sensor_data`
 
 ```sql
 CREATE TABLE sensor_data (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  device_id VARCHAR(50),
-  temperature FLOAT,
-  humidity FLOAT,
-  air_quality INT DEFAULT 0,
-  alert_level TINYINT DEFAULT 0,
+  device_id VARCHAR(50) NOT NULL,
+  temperature FLOAT NOT NULL,
+  humidity FLOAT NOT NULL,
+  air_quality INT NOT NULL DEFAULT 0,
+  alert_level TINYINT NOT NULL DEFAULT 0,
   timestamp BIGINT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
----
+Mapping:
+- MQTT/API field `timestamp_ms` duoc luu vao cot DB `timestamp`.
+- Khi API tra history, backend alias `timestamp AS timestamp_ms`.
 
-## Công việc cần làm
-
-* Kết nối backend với MySQL
-* Lưu dữ liệu từ MQTT vào DB
-* Truy vấn dữ liệu cho API `/api/history`
-
----
-
-## Cách chạy
-
-### 1. Tạo database
+## `control_log`
 
 ```sql
-CREATE DATABASE iot_db;
+CREATE TABLE control_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  device_id VARCHAR(50) NOT NULL,
+  command VARCHAR(100) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### 2. Import schema
-
-```bash
-mysql -u root -p iot_db < schema.sql
-```
-
----
-
-## Kết nối từ backend
-
-```js
-const mysql = require('mysql2');
-
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'password',
-  database: 'iot_db'
-});
-```
-
----
-
-## Test
-
-### Insert thử:
+## Test Query
 
 ```sql
-INSERT INTO sensor_data (device_id, temperature, humidity)
-VALUES ('esp32_1', 30, 70);
+SELECT device_id, temperature, humidity, air_quality, alert_level, timestamp AS timestamp_ms, created_at
+FROM sensor_data
+ORDER BY created_at DESC
+LIMIT 10;
 ```
-
-### Query:
-
-```sql
-SELECT * FROM sensor_data;
-```
-
----
-
-## Lưu ý
-
-* Realtime KHÔNG lấy từ DB (dùng RAM trong backend)
-* DB chỉ dùng cho lịch sử
-* Nên index cột `created_at`

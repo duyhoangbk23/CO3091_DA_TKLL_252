@@ -6,28 +6,19 @@
 let refreshInterval = null;
 let isConnected = false;
 
-/**
- * Initialize dashboard on page load
- */
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Dashboard initialized');
     updateFooterTime();
     checkServerConnection();
     refreshData();
-    
-    // Set up auto-refresh every 2 seconds
+
     refreshInterval = setInterval(refreshData, 2000);
-    
-    // Update footer time every second
     setInterval(updateFooterTime, 1000);
 });
 
-/**
- * Refresh sensor data from API
- */
 async function refreshData() {
     const data = await fetchLatestData();
-    
+
     if (data) {
         isConnected = true;
         updateConnectionStatus(true);
@@ -38,41 +29,35 @@ async function refreshData() {
     }
 }
 
-/**
- * Update dashboard display with sensor data
- */
 function updateDashboard(data) {
-    // Update device information
     document.getElementById('device-id').textContent = data.device_id || '-';
     document.getElementById('device-status').textContent = data.status || 'unknown';
-    document.getElementById('device-status').className = 
+    document.getElementById('device-status').className =
         data.status === 'online' ? 'badge bg-success' : 'badge bg-danger';
-    
-    // Update sensor readings
+
     const tempValue = formatValue(data.temperature, 1);
     const humidityValue = formatValue(data.humidity, 1);
-    
-    document.getElementById('temperature-value').textContent = tempValue + '°C';
+    const airQualityValue = Number.parseInt(data.air_quality, 10) || 0;
+    const alertLevelValue = Number.parseInt(data.alert_level, 10) || 0;
+
+    document.getElementById('temperature-value').textContent = tempValue + ' C';
     document.getElementById('humidity-value').textContent = humidityValue + '% RH';
-    
-    // Update status badges
+    document.getElementById('air-quality-value').textContent = airQualityValue;
+    document.getElementById('alert-level-value').textContent = alertLevelValue;
+
     document.getElementById('temp-status').textContent = getTempStatus(data.temperature);
     document.getElementById('humidity-status').textContent = getHumidityStatus(data.humidity);
-    
-    // Update last update time
-    const lastUpdate = new Date(data.timestamp).toLocaleTimeString();
-    document.getElementById('last-update').textContent = lastUpdate;
-    
-    // Update connection time (formatted)
-    document.getElementById('connection-time').textContent = formatTimestamp(data.timestamp);
-    
-    // Add animation effect
+    document.getElementById('air-quality-status').textContent = getAirQualityStatus(airQualityValue);
+    document.getElementById('alert-level-status').textContent = getAlertStatus(alertLevelValue);
+
+    const receivedAt = data.received_at || new Date().toISOString();
+    document.getElementById('last-update').textContent = formatTimestamp(receivedAt);
+    document.getElementById('connection-time').textContent = formatTimestamp(receivedAt);
+    document.getElementById('device-timestamp').textContent = data.timestamp_ms || '-';
+
     animateSensorUpdate();
 }
 
-/**
- * Get temperature status based on value
- */
 function getTempStatus(temp) {
     if (temp < 0) return 'Cold';
     if (temp < 20) return 'Cool';
@@ -81,9 +66,6 @@ function getTempStatus(temp) {
     return 'Hot';
 }
 
-/**
- * Get humidity status based on value
- */
 function getHumidityStatus(humidity) {
     if (humidity < 30) return 'Dry';
     if (humidity < 50) return 'Normal';
@@ -91,9 +73,18 @@ function getHumidityStatus(humidity) {
     return 'Very Humid';
 }
 
-/**
- * Update connection status display
- */
+function getAirQualityStatus(airQuality) {
+    if (airQuality <= 300) return 'Normal';
+    if (airQuality <= 500) return 'Warning';
+    return 'Critical';
+}
+
+function getAlertStatus(alertLevel) {
+    if (alertLevel === 0) return 'OK';
+    if (alertLevel === 1) return 'Warning';
+    return 'Critical';
+}
+
 function updateConnectionStatus(connected) {
     const statusBadge = document.getElementById('connection-status');
     if (connected) {
@@ -105,53 +96,26 @@ function updateConnectionStatus(connected) {
     }
 }
 
-/**
- * Check if server is running
- */
 async function checkServerConnection() {
     const isHealthy = await checkHealth();
     updateConnectionStatus(isHealthy);
 }
 
-/**
- * Animate sensor card updates
- */
 function animateSensorUpdate() {
     const cards = document.querySelectorAll('.sensor-card');
     cards.forEach(card => {
         card.style.animation = 'none';
-        // Trigger reflow to restart animation
         setTimeout(() => {
             card.style.animation = 'pulse 0.3s ease-in-out';
         }, 10);
     });
 }
 
-/**
- * Update footer time
- */
 function updateFooterTime() {
     const now = new Date();
     document.getElementById('footer-time').textContent = now.toLocaleString();
 }
 
-/**
- * Manual refresh button handler
- */
-async function refreshData() {
-    const data = await fetchLatestData();
-    
-    if (data) {
-        isConnected = true;
-        updateConnectionStatus(true);
-        updateDashboard(data);
-    } else {
-        isConnected = false;
-        updateConnectionStatus(false);
-    }
-}
-
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (refreshInterval) {
         clearInterval(refreshInterval);

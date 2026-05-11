@@ -105,7 +105,8 @@ void vTaskMQTT(void *pvParameters) {
                     snprintf(
                         msg,
                         sizeof(msg),
-                        "{\"device_id\":\"esp32_device\",\"temperature\":%.2f,\"humidity\":%.2f,\"air_quality\":%d,\"alert_level\":%d,\"timestamp_ms\":%lld}",
+                        "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"air_quality\":%d,\"alert_level\":%d,\"timestamp_ms\":%lld}",
+                        DEVICE_ID,
                         localData.temperature,
                         localData.humidity,
                         localData.air_quality,

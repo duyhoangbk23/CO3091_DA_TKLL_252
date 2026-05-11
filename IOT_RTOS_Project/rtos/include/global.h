@@ -6,9 +6,11 @@
 #include <freertos/semphr.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <string>
 
 // Struct chứa dữ liệu từ các chân DHT22 và MQ135
-typedef struct {
+typeded::stf struct {
+    string   device_id;                        //add device id
     float    temperature;  // °C
     float    humidity;     // %RH
     uint16_t air_quality;  // ppm (MQ-135 raw ADC)

@@ -41,7 +41,10 @@ const schemas = {
     sensorData: Joi.object({
         device_id: Joi.string().required(),
         temperature: Joi.number().required(),
-        humidity: Joi.number().required()
+        humidity: Joi.number().required(),
+        air_quality: Joi.number().integer().min(0).default(0),
+        alert_level: Joi.number().integer().min(0).max(2).default(0),
+        timestamp_ms: Joi.number().integer().min(0).required()
     }),
 
     // Control command validation

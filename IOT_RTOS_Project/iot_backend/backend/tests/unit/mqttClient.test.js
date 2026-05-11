@@ -68,7 +68,14 @@ describe('mqttClient.init()', () => {
 
         fakeClient._trigger('connect');
 
-        const payload = JSON.stringify({ temperature: 28.5, humidity: 65.0 });
+        const payload = JSON.stringify({
+            device_id: 'esp32_device',
+            temperature: 28.5,
+            humidity: 65.0,
+            air_quality: 220,
+            alert_level: 0,
+            timestamp_ms: 123456
+        });
         fakeClient._trigger('message', 'iot/sensor/data', Buffer.from(payload));
 
         expect(callback).toHaveBeenCalledTimes(1);
@@ -76,7 +83,10 @@ describe('mqttClient.init()', () => {
             expect.objectContaining({
                 temperature: 28.5,
                 humidity:    65.0,
-                device_id:   'esp32_device'
+                device_id:   'esp32_device',
+                air_quality: 220,
+                alert_level: 0,
+                timestamp_ms: 123456
             })
         );
     });
@@ -186,12 +196,22 @@ describe('mqttClient.getLatestData()', () => {
         mqttClient.init(jest.fn());
         fakeClient._trigger('connect');
 
-        const payload = JSON.stringify({ temperature: 33.1, humidity: 55.5 });
+        const payload = JSON.stringify({
+            device_id: 'esp32_device',
+            temperature: 33.1,
+            humidity: 55.5,
+            air_quality: 350,
+            alert_level: 1,
+            timestamp_ms: 999
+        });
         fakeClient._trigger('message', 'iot/sensor/data', Buffer.from(payload));
 
         const data = mqttClient.getLatestData();
         expect(data).not.toBeNull();
         expect(data.temperature).toBe(33.1);
         expect(data.humidity).toBe(55.5);
+        expect(data.air_quality).toBe(350);
+        expect(data.alert_level).toBe(1);
+        expect(data.timestamp_ms).toBe(999);
     });
 });
