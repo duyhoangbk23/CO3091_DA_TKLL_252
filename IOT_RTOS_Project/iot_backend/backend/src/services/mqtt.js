@@ -44,12 +44,12 @@ function init(onDataReceived) {
 
             if (topic === TOPIC_DATA && dataCallback) {
                 const mappedData = {
-                    device_id: 'esp32_device',
+                    device_id: rawData.device_id || 'esp32_device',
                     temperature: rawData.temperature,
                     humidity: rawData.humidity,
                     air_quality: rawData.air_quality || 0,
                     alert_level: rawData.alert_level || 0,
-                    timestamp: parseInt(rawData.timestamp, 10) || Date.now()
+                    timestamp: parseInt(rawData.timestamp_ms || rawData.timestamp, 10) || Date.now()
                 };
 
                 dataCallback(mappedData);
@@ -75,14 +75,18 @@ function init(onDataReceived) {
  * @param {string} state - Command state (ON/OFF)
  * @returns {boolean} Success status
  */
-function publishControl(state) {
+function publishControl(command, deviceId = 'esp32_device') {
     if (!client || !client.connected) {
         logger.error('Cannot publish: MQTT client not connected');
         return false;
     }
 
     try {
-        const payload = JSON.stringify({ led: state });
+        const payload = JSON.stringify({
+            device_id: deviceId,
+            command,
+            timestamp: Date.now()
+        });
         client.publish(TOPIC_CONTROL, payload, { qos: 1 });
         logger.info(`📤 Control message published: ${payload}`);
         return true;

@@ -2,6 +2,11 @@ const controlModel = require('../models/controlModel');
 const mqttService = require('../services/mqtt');
 const logger = require('../logger/winston');
 
+const CONTROL_COMMAND_MAP = {
+    ON: 'LED_ON',
+    OFF: 'LED_OFF'
+};
+
 /**
  * Control Controller - Business logic for device control commands
  */
@@ -20,12 +25,13 @@ async function sendControlCommand(deviceId, command) {
         }
 
         const normalizedCommand = command.toUpperCase();
-        if (normalizedCommand !== 'ON' && normalizedCommand !== 'OFF') {
+        const mqttCommand = CONTROL_COMMAND_MAP[normalizedCommand];
+        if (!mqttCommand) {
             throw new Error('Invalid command. Use ON or OFF');
         }
 
         // Publish via MQTT
-        const published = mqttService.publishControl(normalizedCommand);
+        const published = mqttService.publishControl(mqttCommand, deviceId);
         if (!published) {
             throw new Error('MQTT client not connected');
         }
@@ -33,11 +39,11 @@ async function sendControlCommand(deviceId, command) {
         // Log to database
         await controlModel.insertControlLog({
             device_id: deviceId,
-            command: `LED_${normalizedCommand}`,
+            command: mqttCommand,
             status: 'sent'
         });
 
-        logger.info(`📤 Control command sent: ${deviceId} -> ${normalizedCommand}`);
+        logger.info(`📤 Control command sent: ${deviceId} -> ${mqttCommand}`);
 
         return {
             success: true,
@@ -45,6 +51,7 @@ async function sendControlCommand(deviceId, command) {
             result: {
                 device_id: deviceId,
                 command: normalizedCommand,
+                mqtt_command: mqttCommand,
                 status: 'sent',
                 timestamp: new Date().toISOString()
             }

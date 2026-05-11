@@ -39,12 +39,12 @@ function init(onDataReceived) {
             if (topic === TOPIC_DATA) {
                 // New Protocol Format: { temperature, humidity }
                 const mappedData = {
-                    device_id: 'esp32_device', 
+                    device_id: rawData.device_id || 'esp32_device', 
                     temperature: rawData.temperature,
                     humidity: rawData.humidity,
                     air_quality: rawData.air_quality || 0,
                     alert_level: rawData.alert_level || 0,
-                    timestamp: parseInt(rawData.timestamp, 10) || Date.now()
+                    timestamp: parseInt(rawData.timestamp_ms || rawData.timestamp, 10) || Date.now()
                 };
 
                 latestData = mappedData;
@@ -70,13 +70,17 @@ function init(onDataReceived) {
  * Publish control command to Device
  * @param {string} state 'ON' or 'OFF'
  */
-function publishControl(state) {
+function publishControl(command, deviceId = 'esp32_device') {
     if (!client || !client.connected) {
         console.error('✗ Cannot publish: MQTT client not connected');
         return false;
     }
 
-    const payload = JSON.stringify({ led: state });
+    const payload = JSON.stringify({
+        device_id: deviceId,
+        command,
+        timestamp: Date.now()
+    });
     console.log(`📤 Sending Control to Device: ${payload}`);
     client.publish(TOPIC_CONTROL, payload);
     return true;
@@ -95,4 +99,3 @@ module.exports = {
     publishControl,
     getLatestData
 };
-

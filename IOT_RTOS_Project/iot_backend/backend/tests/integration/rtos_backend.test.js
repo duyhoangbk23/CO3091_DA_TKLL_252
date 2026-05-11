@@ -24,19 +24,11 @@ const fakeMqttClient = {
 
 jest.mock('mqtt');
 const mqtt = require('mqtt');
+mqtt.connect.mockReturnValue(fakeMqttClient);
 
 beforeEach(() => {
-    jest.resetModules();
     jest.clearAllMocks();
-});
-
-test('...', () => {
-    const fakeClient = makeFakeClient();
-    mqtt.connect.mockReturnValue(fakeClient);
-
-    // Import sau khi mock
-    const mqttClient = require('../../src/mqtt/mqttClient');
-    // ...test code...
+    mqtt.connect.mockReturnValue(fakeMqttClient);
 });
 
 // ================================================================
@@ -158,7 +150,7 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
 // ================================================================
 describe('Luong dieu khien: Backend → MQTT → ESP32 (RTOS)', () => {
 
-    test('5. POST /api/control ON publish payload {"led":"ON"} toi MQTT', async () => {
+    test('5. POST /api/control ON publish payload {"command":"LED_ON"} toi MQTT', async () => {
         setMqtt(mqttMod);
         _connected = true;
 
@@ -171,10 +163,10 @@ describe('Luong dieu khien: Backend → MQTT → ESP32 (RTOS)', () => {
 
         const ctrlMsgs = _published.filter(m => m.topic === 'iot/device/control');
         expect(ctrlMsgs.length).toBeGreaterThan(0);
-        expect(JSON.parse(ctrlMsgs[0].payload).led).toBe('ON');
+        expect(JSON.parse(ctrlMsgs[0].payload).command).toBe('LED_ON');
     });
 
-    test('6. POST /api/control OFF publish payload {"led":"OFF"}', async () => {
+    test('6. POST /api/control OFF publish payload {"command":"LED_OFF"}', async () => {
         setMqtt(mqttMod);
         _connected = true;
 
@@ -183,7 +175,7 @@ describe('Luong dieu khien: Backend → MQTT → ESP32 (RTOS)', () => {
             .send({ device_id: 'esp32_device', command: 'off' }); // lowercase
 
         const ctrlMsgs = _published.filter(m => m.topic === 'iot/device/control');
-        expect(JSON.parse(ctrlMsgs[0].payload).led).toBe('OFF');
+        expect(JSON.parse(ctrlMsgs[0].payload).command).toBe('LED_OFF');
     });
 
     test('7. 3 lenh lien tiep duoc ghi du vao control_log', async () => {

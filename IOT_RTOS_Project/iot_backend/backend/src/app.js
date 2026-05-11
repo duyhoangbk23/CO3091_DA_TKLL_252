@@ -83,23 +83,24 @@ app.post('/api/control', async (req, res) => {
     if (state !== 'ON' && state !== 'OFF') {
         return res.status(400).json({ success: false, error: 'Invalid state. Use ON or OFF' });
     }
+    const mqttCommand = `LED_${state}`;
 
     try {
-        if (!mqttClient || !mqttClient.publishControl(state)) {
+        if (!mqttClient || !mqttClient.publishControl(mqttCommand, device_id)) {
             throw new Error('MQTT client not connected');
         }
 
         if (db) {
             await db.query(
                 'INSERT INTO control_log (device_id, command, status) VALUES (?, ?, ?)',
-                [device_id, `LED_${state}`, 'sent']
+                [device_id, mqttCommand, 'sent']
             );
         }
 
         res.json({
             success: true,
             message: `Control "${state}" sent to device "${device_id}"`,
-            result: { device_id, command: state, status: 'sent', timestamp: new Date().toISOString() }
+            result: { device_id, command: state, mqtt_command: mqttCommand, status: 'sent', timestamp: new Date().toISOString() }
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Failed to send control: ' + err.message });

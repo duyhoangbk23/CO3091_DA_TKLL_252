@@ -22,7 +22,7 @@ void vTaskSensorRead(void *pvParameters) {
         data.humidity = dht.readHumidity();
         data.air_quality = analogRead(MQ135_PIN);
         data.alert_level = 0;                      // Mặc định OK, Task_DataProcess sẽ cập nhật
-        data.timestamp   = esp_timer_get_time();   // Microseconds kể từ khi boot
+        data.timestamp   = esp_timer_get_time() / 1000;   // Milliseconds ke tu khi boot
 
         // Kiểm tra dữ liệu hợp lệ trước khi gửi vào Queue
         if (!isnan(data.temperature) && !isnan(data.humidity)) {

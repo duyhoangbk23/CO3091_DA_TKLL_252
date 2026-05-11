@@ -163,9 +163,4 @@ IOT_RTOS_Project/
 │   └── mock_data.js
 │
 └── README.md
-<<<<<<< HEAD
 ...
-
-=======
-,,,
->>>>>>> 0ecfde8250ea0434713de267dcfffd77fa4c7101

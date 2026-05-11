@@ -1,92 +1,112 @@
-# Hướng dẫn MQTT cho Project
+# MQTT Guide
 
-## 1. Cài đặt MQTT Broker (Mosquitto) trên Windows
+Huong dan chay va test MQTT cho project IoT RTOS.
 
-- Truy cập https://mosquitto.org/download/ và tải bản Windows Installer (ví dụ: `mosquitto-2.x.x-install-windows-x64.exe`).
-- Cài đặt bình thường, tick chọn "Service" nếu muốn Mosquitto chạy như một dịch vụ Windows (khuyến nghị tick cả phần client tools).
-- Sau khi cài đặt xong:
-  - Để chạy Mosquitto broker:
-    - Mở Command Prompt (cmd) hoặc PowerShell.
-    - Chạy lệnh:
-      ```powershell
-      mosquitto -v -c "C:\Program Files\mosquitto\mosquitto.conf"
-      ```
-    - Nếu đã cài đặt service, có thể bật/tắt bằng:
-      ```powershell
-      net start mosquitto
-      net stop mosquitto
-      ```
-- Mặc định broker sẽ chạy ở `mqtt://localhost:1883`.
-- Để test nhanh, có thể mở 2 cửa sổ cmd:
-  - Một cửa sổ chạy broker: `mosquitto -v`
-  - Một cửa sổ khác dùng lệnh pub/sub như bên dưới.
+## Protocol Chuan
 
-## 2. Cấu hình kết nối MQTT trong project
+Telemetry ESP32 -> Backend:
 
-- File cấu hình: `.env` hoặc biến môi trường
-  ```env
-  MQTT_BROKER=mqtt://localhost:1883
-  ```
-- Trong code (ví dụ ở `src/mqtt/mqttClient.js`):
-  ```js
-  const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-  const client = mqtt.connect(brokerUrl);
-  ```
+```powershell
+mosquitto_pub -h localhost -t iot/sensor/data -m "{\"device_id\":\"esp32_device\",\"temperature\":25,\"humidity\":60,\"air_quality\":200,\"alert_level\":0,\"timestamp_ms\":123456}"
+```
 
-## 3. Chạy backend với MQTT
+Control Backend -> ESP32:
 
-- Đảm bảo broker đã chạy (`mosquitto` đang bật)
-- Chạy backend:
-  ```sh
-  cd IOT_RTOS_Project/iot_backend/backend
-  npm install
-  npm start
-  ```
+```powershell
+mosquitto_pub -h localhost -t iot/device/control -m "{\"device_id\":\"esp32_device\",\"command\":\"LED_ON\",\"timestamp\":1710000000000}"
+```
 
-## 4. Test với MQTT
+Debug topic control:
 
-### a. Test thủ công bằng mosquitto-clients (Windows)
-- Gửi message:
-  ```powershell
-  mosquitto_pub -h localhost -t iot/sensor/data -m "{\"temperature\":25,\"humidity\":60}"
-  ```
-- Nhận message:
-  ```powershell
-  mosquitto_sub -h localhost -t iot/device/control
-  ```
+```powershell
+mosquitto_sub -h localhost -t iot/device/control -v
+```
 
-### b. Test tự động với Jest
-- Các test mock module `mqtt` để không cần broker thật.
-- Đảm bảo trong test:
-  - Mock đúng `mqtt.connect` trả về fake client có hàm `on`, `subscribe`, `publish`.
-  - Reset module và mock trước khi require module cần test.
-- Ví dụ:
-  ```js
-  jest.mock('mqtt');
-  const mqtt = require('mqtt');
-  beforeEach(() => {
-    jest.resetModules();
-    jest.clearAllMocks();
-  });
-  test('...', () => {
-    const fakeClient = makeFakeClient();
-    mqtt.connect.mockReturnValue(fakeClient);
-    const mqttClient = require('../../src/mqtt/mqttClient');
-    // ...
-  });
-  ```
+## Chay Bang Docker
 
-## 5. Lưu ý cho Windows
-- Khi test unit, không cần broker thật.
-- Khi test tích hợp, cần broker thật chạy ở đúng địa chỉ cấu hình (`localhost:1883`).
-- Nếu gặp lỗi `Cannot read properties of undefined (reading 'on')`, kiểm tra lại thứ tự mock và require module.
-- Nếu lệnh `mosquitto_pub` hoặc `mosquitto_sub` không nhận diện được, hãy thêm thư mục cài đặt Mosquitto (mặc định: `C:\Program Files\mosquitto`) vào biến môi trường PATH hoặc chạy lệnh với đường dẫn đầy đủ, ví dụ:
-  ```powershell
-  "C:\Program Files\mosquitto\mosquitto_pub.exe" -h localhost -t iot/sensor/data -m "{\"temperature\":25,\"humidity\":60}"
-  ```
+Tai root repo:
 
----
-Tài liệu tham khảo:
-- https://mosquitto.org/
-- https://www.npmjs.com/package/mqtt
-- https://jestjs.io/docs/mock-functions
+```powershell
+docker compose up --build
+```
+
+Mac dinh:
+- MQTT TCP: `localhost:1883`
+- MQTT WebSocket: `localhost:9001`
+- Backend API: `http://localhost:3000`
+- Frontend: `http://localhost:8080`
+
+## Chay Mosquitto Rieng Tren Windows
+
+Neu khong dung Docker, cai Mosquitto tu:
+
+```text
+https://mosquitto.org/download/
+```
+
+Chay broker:
+
+```powershell
+mosquitto -v
+```
+
+Neu cai Mosquitto thanh Windows service:
+
+```powershell
+net start mosquitto
+net stop mosquitto
+```
+
+## Cau Hinh Backend
+
+File `.env` hoac bien moi truong:
+
+```env
+MQTT_BROKER=mqtt://localhost:1883
+MQTT_TOPIC_DATA=iot/sensor/data
+MQTT_TOPIC_COMMAND=iot/device/control
+```
+
+Khi chay trong Docker Compose, backend dung:
+
+```env
+MQTT_BROKER=mqtt://mqtt:1883
+```
+
+## Cau Hinh ESP32
+
+Trong `IOT_RTOS_Project/rtos/include/config.h`, khong dung `localhost` cho ESP32. Hay dat `MQTT_SERVER` bang IP LAN cua may dang chay broker, vi du:
+
+```cpp
+#define MQTT_SERVER "192.168.1.100"
+```
+
+Co the override bang PlatformIO build flags neu can.
+
+## Test Nhan Data Tu ESP32
+
+Subscribe telemetry:
+
+```powershell
+mosquitto_sub -h localhost -t iot/sensor/data -v
+```
+
+Gui telemetry gia lap:
+
+```powershell
+mosquitto_pub -h localhost -t iot/sensor/data -m "{\"device_id\":\"esp32_device\",\"temperature\":28.5,\"humidity\":65,\"air_quality\":230,\"alert_level\":0,\"timestamp_ms\":10000}"
+```
+
+## Test Lenh Control
+
+Subscribe lenh backend gui:
+
+```powershell
+mosquitto_sub -h localhost -t iot/device/control -v
+```
+
+Gui lenh truc tiep toi ESP32:
+
+```powershell
+mosquitto_pub -h localhost -t iot/device/control -m "{\"device_id\":\"esp32_device\",\"command\":\"LED_OFF\",\"timestamp\":1710000000000}"
+```

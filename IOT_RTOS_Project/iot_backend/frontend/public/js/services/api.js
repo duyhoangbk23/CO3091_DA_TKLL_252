@@ -3,7 +3,12 @@
  * Handles all backend API calls
  */
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = window.location.protocol === 'file:'
+    ? 'http://localhost:3000/api'
+    : '/api';
+const HEALTH_URL = window.location.protocol === 'file:'
+    ? 'http://localhost:3000/health'
+    : '/health';
 
 /**
  * Fetch latest sensor data
@@ -98,7 +103,7 @@ async function fetchStatistics() {
  */
 async function checkHealth() {
     try {
-        const response = await fetch('http://localhost:3000/health');
+        const response = await fetch(HEALTH_URL);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }

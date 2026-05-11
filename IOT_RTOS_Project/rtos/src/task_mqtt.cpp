@@ -1,41 +1,68 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
 #include "tasks.h"
 #include "global.h"
 #include "config.h"
 
 void connectWiFi() {
     if (WiFi.status() == WL_CONNECTED) return;
-    Serial.println("[WiFi] Đang kết nối...");
+
+    Serial.println("[WiFi] Dang ket noi...");
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    
+
     int retry = 0;
     while (WiFi.status() != WL_CONNECTED && retry < 20) {
         vTaskDelay(pdMS_TO_TICKS(500));
         Serial.print(".");
         retry++;
     }
-    
+
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("\n[WiFi] Đã kết nối! IP:" + WiFi.localIP().toString());
+        Serial.println("\n[WiFi] Da ket noi! IP:" + WiFi.localIP().toString());
     }
 }
 
-// 1. Hàm Callback: Chỉ làm nhiệm vụ nhận tin và đẩy vào Queue
+static void normalizeControlPayload(byte* payload, unsigned int length, char* cmd, size_t cmdSize) {
+    char raw[128] = {0};
+    int len = (length >= sizeof(raw)) ? sizeof(raw) - 1 : length;
+    memcpy(raw, payload, len);
+
+    StaticJsonDocument<128> doc;
+    DeserializationError error = deserializeJson(doc, raw);
+    if (!error) {
+        const char* jsonCmd = doc["command"] | "";
+        const char* ledState = doc["led"] | "";
+
+        if (strlen(jsonCmd) > 0) {
+            strncpy(cmd, jsonCmd, cmdSize - 1);
+        } else if (strcmp(ledState, "ON") == 0) {
+            strncpy(cmd, "LED_ON", cmdSize - 1);
+        } else if (strcmp(ledState, "OFF") == 0) {
+            strncpy(cmd, "LED_OFF", cmdSize - 1);
+        }
+        return;
+    }
+
+    strncpy(cmd, raw, cmdSize - 1);
+}
+
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     char cmd[20] = {0};
-    int len = (length > 19) ? 19 : length;
-    memcpy(cmd, payload, len);
+    normalizeControlPayload(payload, length, cmd, sizeof(cmd));
 
-    Serial.printf("[MQTT] Tin nhan den: %s\n", cmd);
+    Serial.printf("[MQTT] Tin nhan den topic %s: %s\n", topic, cmd);
 
-    // Đẩy lệnh vào Queue để Task_Control xử lý (Cách chuyên nghiệp)
-    if (xQueueSend(xControlQueue, &cmd, 0) != pdPASS) {
+    if (cmd[0] == '\0') {
+        Serial.println("[MQTT] Lenh rong hoac sai format!");
+        return;
+    }
+
+    if (xQueueSend(xControlQueue, cmd, 0) != pdPASS) {
         Serial.println("[MQTT] Control Queue full!");
     }
 }
 
-// 2. Hàm Reconnect
 void mqtt_reconnect() {
     if (WiFi.status() != WL_CONNECTED) return;
 
@@ -44,23 +71,21 @@ void mqtt_reconnect() {
         String clientId = "ESP32_Danh_" + String(random(0xffff), HEX);
 
         if (mqttClient.connect(clientId.c_str())) {
-            Serial.println("Thành công!");
+            Serial.println("Thanh cong!");
             mqttClient.subscribe(MQTT_TOPIC_COMMAND);
         } else {
-            Serial.printf("Thất bại, rc=%d - Thu lai sau 5s\n", mqttClient.state());
+            Serial.printf("That bai, rc=%d - Thu lai sau 5s\n", mqttClient.state());
             vTaskDelay(pdMS_TO_TICKS(5000));
         }
     }
 }
 
-// 3. Task chính
 void vTaskMQTT(void *pvParameters) {
-    // SỬA LỖI: Thêm MQTT_SERVER vào đây
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     mqttClient.setCallback(mqtt_callback);
 
     SensorData_t localData;
-    char msg[128];
+    char msg[192];
 
     for (;;) {
         if (WiFi.status() != WL_CONNECTED) {
@@ -69,25 +94,30 @@ void vTaskMQTT(void *pvParameters) {
             if (!mqttClient.connected()) {
                 mqtt_reconnect();
             }
-            
+
             mqttClient.loop();
 
-            // Lấy dữ liệu an toàn để gửi lên Dashboard
             if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(100)) == pdPASS) {
                 localData = g_LatestData;
                 xSemaphoreGive(xDataMutex);
-                
+
                 if (localData.temperature != 0) {
-                    snprintf(msg, 128, "{\"temperature\":%.2f, \"humidity\":%.2f, \"air_quality\":%d, \"alert_level\":%d, \"timestamp\":%lld}", 
-                             localData.temperature, localData.humidity, 
-                             localData.air_quality, localData.alert_level,
-                             localData.timestamp);
-                    
+                    snprintf(
+                        msg,
+                        sizeof(msg),
+                        "{\"device_id\":\"esp32_device\",\"temperature\":%.2f,\"humidity\":%.2f,\"air_quality\":%d,\"alert_level\":%d,\"timestamp_ms\":%lld}",
+                        localData.temperature,
+                        localData.humidity,
+                        localData.air_quality,
+                        localData.alert_level,
+                        localData.timestamp
+                    );
+
                     mqttClient.publish(MQTT_TOPIC_PUBLISH, msg);
                 }
             }
         }
-        // Gửi dữ liệu định kỳ mỗi 10 giây
+
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

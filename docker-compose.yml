@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database
   mysql:
@@ -39,7 +37,7 @@ services:
     networks:
       - iot-network
     healthcheck:
-      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "test"]
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ok"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,8 +58,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-iot_password}
       DB_NAME: ${DB_NAME:-iot_db}
       MQTT_BROKER: mqtt://mqtt:1883
-      MQTT_TOPIC_PUBLISH: ${MQTT_TOPIC_PUBLISH:-sensor/esp32/data}
-      MQTT_TOPIC_COMMAND: ${MQTT_TOPIC_COMMAND:-sensor/esp32/command}
+      MQTT_TOPIC_PUBLISH: ${MQTT_TOPIC_PUBLISH:-iot/sensor/data}
+      MQTT_TOPIC_COMMAND: ${MQTT_TOPIC_COMMAND:-iot/device/control}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:

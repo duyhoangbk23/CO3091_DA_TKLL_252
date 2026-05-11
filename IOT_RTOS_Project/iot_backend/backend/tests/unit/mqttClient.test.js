@@ -4,11 +4,12 @@
  */
 
 jest.mock('mqtt');
-const mqtt = require('mqtt');
+let mqtt;
 
 // Reset module truoc moi test (vi mqttClient dung bien module-level)
 beforeEach(() => {
     jest.resetModules();
+    mqtt = require('mqtt');
     jest.clearAllMocks();
 });
 
@@ -129,7 +130,7 @@ describe('mqttClient.publishControl()', () => {
         expect(result).toBe(false);
     });
 
-    test('publish payload dung dinh dang {"led":"ON"}', () => {
+    test('publish payload dung dinh dang {"command":"LED_ON"}', () => {
         const fakeClient = makeFakeClient(true);
         mqtt.connect.mockReturnValue(fakeClient);
 
@@ -137,12 +138,17 @@ describe('mqttClient.publishControl()', () => {
         mqttClient.init(jest.fn());
         fakeClient._trigger('connect');
 
-        mqttClient.publishControl('ON');
+        mqttClient.publishControl('LED_ON', 'esp32_device');
 
         expect(fakeClient.publish).toHaveBeenCalledWith(
             'iot/device/control',
-            JSON.stringify({ led: 'ON' })
+            expect.any(String)
         );
+        const payload = JSON.parse(fakeClient.publish.mock.calls[0][1]);
+        expect(payload).toMatchObject({
+            device_id: 'esp32_device',
+            command: 'LED_ON'
+        });
     });
 
     test('tra ve true khi publish thanh cong', () => {

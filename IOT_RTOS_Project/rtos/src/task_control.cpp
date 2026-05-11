@@ -72,7 +72,17 @@ void vTaskControl(void *pvParameters) {
                 ESP.restart();
             }
 
-            // 4. Dieu khien LED: bat LED theo mau chi dinh
+            // 4. Lenh LED chuan tu Backend
+            else if (strcmp(receivedCmd, "LED_ON") == 0) {
+                digitalWrite(LED_GREEN, HIGH);
+                Serial.println(" -> LED: BAT.");
+            }
+            else if (strcmp(receivedCmd, "LED_OFF") == 0) {
+                digitalWrite(LED_GREEN, LOW);
+                Serial.println(" -> LED: TAT.");
+            }
+
+            // 5. Dieu khien LED: bat LED theo mau chi dinh
             //    Lenh: "LED_RED_ON", "LED_YLW_ON", "LED_GRN_ON"
             //          "LED_RED_OFF", "LED_YLW_OFF", "LED_GRN_OFF"
             else if (strcmp(receivedCmd, "LED_RED_ON") == 0) {

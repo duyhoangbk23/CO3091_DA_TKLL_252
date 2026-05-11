@@ -1,67 +1,68 @@
-# MQTT Protocol Definition for RTOS Implementation
+# MQTT Protocol for RTOS
 
-This document defines the MQTT protocol designed and implemented in the Backend. RTOS developers should follow these specifications to ensure compatibility with the Dashboard.
+Tai lieu nay dinh nghia protocol ESP32 RTOS phai tuan theo de tuong thich voi backend va dashboard.
 
-## 📡 MQTT Topics
+## Topics
 
-| Topic | Direction | Purpose | Content Type |
-|-------|-----------|---------|--------------|
-| `iot/sensor/data` | ESP32 -> Backend | Periodic telemetry | JSON |
-| `iot/device/control` | Backend -> ESP32 | Remote control | JSON |
+| Topic | Direction | Purpose |
+| --- | --- | --- |
+| `iot/sensor/data` | ESP32 -> Backend | Telemetry dinh ky |
+| `iot/device/control` | Backend -> ESP32 | Lenh dieu khien |
 
----
+## Publish Sensor Data
 
-## 📊 1. Publish Sensor Data
-The ESP32 should publish sensor readings to **`iot/sensor/data`** every 1-10 seconds.
+ESP32 publish JSON len `iot/sensor/data` moi 1-10 giay.
 
-**JSON Format:**
 ```json
 {
+  "device_id": "esp32_device",
   "temperature": 25.5,
   "humidity": 60.0,
   "air_quality": 200,
   "alert_level": 0,
-  "timestamp": 1700000000
+  "timestamp_ms": 170000
 }
 ```
 
-*   `temperature`: floating point number (Celsius)
-*   `humidity`: floating point number (Percentage)
-*   `air_quality`: integer (ppm or device AQI value)
-*   `alert_level`: integer alert level (0 = OK, 1 = WARN, 2 = CRITICAL)
-*   `timestamp`: integer device timestamp (int64)
+Field:
+- `device_id`: ma thiet bi.
+- `temperature`: nhiet do Celsius.
+- `humidity`: do am %RH.
+- `air_quality`: gia tri MQ-135/AQI dang integer.
+- `alert_level`: `0=OK`, `1=WARN`, `2=CRITICAL`.
+- `timestamp_ms`: milliseconds ke tu khi ESP32 boot.
 
----
+## Subscribe Controls
 
-## 🕹️ 2. Subscribe to Controls
-The ESP32 must subscribe to **`iot/device/control`** to receive commands from the Dashboard.
+ESP32 subscribe `iot/device/control`.
 
-**JSON Format:**
+Backend se publish:
+
 ```json
 {
-  "led": "ON"
-}
-```
-OR
-```json
-{
-  "led": "OFF"
+  "device_id": "esp32_device",
+  "command": "LED_ON",
+  "timestamp": 1710000000000
 }
 ```
 
-*   `led`: Current supported values are `"ON"` and `"OFF"`.
+Lenh hien tai:
+- `LED_ON`
+- `LED_OFF`
 
----
+Firmware cung co the xu ly cac lenh noi bo dang raw string de test bang MQTT client:
+- `MUTE_ALARM`
+- `TEST_LED`
+- `REBOOT`
+- `GET_STATUS`
+- `LED_RED_ON`, `LED_RED_OFF`
+- `LED_YLW_ON`, `LED_YLW_OFF`
+- `LED_GRN_ON`, `LED_GRN_OFF`
+- `BLINK_RED`, `BLINK_YLW`, `BLINK_GRN`
 
-## 🛠️ Implementation Requirements (RTOS)
-1.  **JSON Library:** Use `ArduinoJson` (v6+) or similar to parse/generate payloads.
-2.  **Stability:** Implement auto-reconnect logic for both WiFi and MQTT.
-3.  **Efficiency:** Do not publish data if the values haven't changed significantly (optional, but recommended).
-4.  **Security:** For local testing, no authentication is used. Future versions will require username/password.
+## RTOS Requirements
 
----
-
-## 🚀 Testing with Backend
-1.  Ensure backend is running (`npm run dev`).
-2.  Use a tool like `MQTT Explorer` to monitor topics.
-3.  Publish a test message to `iot/sensor/data` and check the Dashboard UI.
+- Dung ArduinoJson de parse JSON control.
+- Co auto-reconnect WiFi va MQTT.
+- Khong dung `localhost` lam MQTT host tren ESP32; dung IP LAN cua may chay Mosquitto/Docker host.
+- Neu muon override cau hinh khi build, dung PlatformIO build flags cho `WIFI_SSID`, `WIFI_PASS`, `MQTT_SERVER`.

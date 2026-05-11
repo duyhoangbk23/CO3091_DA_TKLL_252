@@ -47,7 +47,7 @@ const schemas = {
     // Control command validation
     controlCommand: Joi.object({
         device_id: Joi.string().required(),
-        command: Joi.string().valid('ON', 'OFF').required()
+        command: Joi.string().uppercase().valid('ON', 'OFF').required()
     }),
 
     // History query validation
