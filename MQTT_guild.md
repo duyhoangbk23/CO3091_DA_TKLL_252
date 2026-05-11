@@ -1,17 +1,25 @@
 # Hướng dẫn MQTT cho Project
 
-## 1. Cài đặt MQTT Broker (Mosquitto)
+## 1. Cài đặt MQTT Broker (Mosquitto) trên Windows
 
-- Cài đặt Mosquitto trên máy local hoặc server:
-  - **Ubuntu:**
-    ```sh
-    sudo apt update
-    sudo apt install mosquitto mosquitto-clients
-    ```
-  - **Windows:**
-    - Tải từ https://mosquitto.org/download/
-    - Cài đặt và chạy `mosquitto.exe`
+- Truy cập https://mosquitto.org/download/ và tải bản Windows Installer (ví dụ: `mosquitto-2.x.x-install-windows-x64.exe`).
+- Cài đặt bình thường, tick chọn "Service" nếu muốn Mosquitto chạy như một dịch vụ Windows (khuyến nghị tick cả phần client tools).
+- Sau khi cài đặt xong:
+  - Để chạy Mosquitto broker:
+    - Mở Command Prompt (cmd) hoặc PowerShell.
+    - Chạy lệnh:
+      ```powershell
+      mosquitto -v -c "C:\Program Files\mosquitto\mosquitto.conf"
+      ```
+    - Nếu đã cài đặt service, có thể bật/tắt bằng:
+      ```powershell
+      net start mosquitto
+      net stop mosquitto
+      ```
 - Mặc định broker sẽ chạy ở `mqtt://localhost:1883`.
+- Để test nhanh, có thể mở 2 cửa sổ cmd:
+  - Một cửa sổ chạy broker: `mosquitto -v`
+  - Một cửa sổ khác dùng lệnh pub/sub như bên dưới.
 
 ## 2. Cấu hình kết nối MQTT trong project
 
@@ -37,13 +45,13 @@
 
 ## 4. Test với MQTT
 
-### a. Test thủ công bằng mosquitto-clients
+### a. Test thủ công bằng mosquitto-clients (Windows)
 - Gửi message:
-  ```sh
-  mosquitto_pub -h localhost -t iot/sensor/data -m '{"temperature":25,"humidity":60}'
+  ```powershell
+  mosquitto_pub -h localhost -t iot/sensor/data -m "{\"temperature\":25,\"humidity\":60}"
   ```
 - Nhận message:
-  ```sh
+  ```powershell
   mosquitto_sub -h localhost -t iot/device/control
   ```
 
@@ -68,10 +76,14 @@
   });
   ```
 
-## 5. Lưu ý
+## 5. Lưu ý cho Windows
 - Khi test unit, không cần broker thật.
-- Khi test tích hợp, cần broker thật chạy ở đúng địa chỉ cấu hình.
+- Khi test tích hợp, cần broker thật chạy ở đúng địa chỉ cấu hình (`localhost:1883`).
 - Nếu gặp lỗi `Cannot read properties of undefined (reading 'on')`, kiểm tra lại thứ tự mock và require module.
+- Nếu lệnh `mosquitto_pub` hoặc `mosquitto_sub` không nhận diện được, hãy thêm thư mục cài đặt Mosquitto (mặc định: `C:\Program Files\mosquitto`) vào biến môi trường PATH hoặc chạy lệnh với đường dẫn đầy đủ, ví dụ:
+  ```powershell
+  "C:\Program Files\mosquitto\mosquitto_pub.exe" -h localhost -t iot/sensor/data -m "{\"temperature\":25,\"humidity\":60}"
+  ```
 
 ---
 Tài liệu tham khảo:
