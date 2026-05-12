@@ -32,6 +32,6 @@ struct SensorSample {
   bool ok_co2 = false;
 };
 
-// Global variables to store sensor data read from ESP32
-// extern SensorSample g_CurrentSensorData;
-// extern SensorSample g_LatestSensorData;
+extern IaqEvaluator g_eval;
+extern IaqController g_ctrl;
+extern IaqState g_iaq; 
