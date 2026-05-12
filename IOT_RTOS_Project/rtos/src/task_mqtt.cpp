@@ -3,7 +3,8 @@
 #include <ArduinoJson.h>
 #include "tasks.h"
 #include "global.h"
-#include "config.h"
+//#include "config.h"
+#include "mqtt_topics.h" // Sử dụng topic từ hợp đồng chung
 
 void connectWiFi() {
     if (WiFi.status() == WL_CONNECTED) return;
@@ -23,6 +24,7 @@ void connectWiFi() {
     }
 }
 
+// Hàm chuẩn hóa lệnh điều khiển từ Backend
 static void normalizeControlPayload(byte* payload, unsigned int length, char* cmd, size_t cmdSize) {
     char raw[128] = {0};
     int len = (length >= sizeof(raw)) ? sizeof(raw) - 1 : length;
@@ -30,20 +32,17 @@ static void normalizeControlPayload(byte* payload, unsigned int length, char* cm
 
     StaticJsonDocument<128> doc;
     DeserializationError error = deserializeJson(doc, raw);
+    
+    // Nếu là JSON, trích xuất trường "command"
     if (!error) {
         const char* jsonCmd = doc["command"] | "";
-        const char* ledState = doc["led"] | "";
-
         if (strlen(jsonCmd) > 0) {
             strncpy(cmd, jsonCmd, cmdSize - 1);
-        } else if (strcmp(ledState, "ON") == 0) {
-            strncpy(cmd, "LED_ON", cmdSize - 1);
-        } else if (strcmp(ledState, "OFF") == 0) {
-            strncpy(cmd, "LED_OFF", cmdSize - 1);
+            return;
         }
-        return;
     }
-
+    
+    // Nếu không phải JSON hoặc không có trường command, lấy nội dung thô
     strncpy(cmd, raw, cmdSize - 1);
 }
 
@@ -51,15 +50,13 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     char cmd[20] = {0};
     normalizeControlPayload(payload, length, cmd, sizeof(cmd));
 
-    Serial.printf("[MQTT] Tin nhan den topic %s: %s\n", topic, cmd);
+    Serial.printf("[MQTT] Lenh den: %s\n", cmd);
 
-    if (cmd[0] == '\0') {
-        Serial.println("[MQTT] Lenh rong hoac sai format!");
-        return;
-    }
-
-    if (xQueueSend(xControlQueue, cmd, 0) != pdPASS) {
-        Serial.println("[MQTT] Control Queue full!");
+    if (cmd[0] != '\0') {
+        // Gửi lệnh vào Queue để Task_Control xử lý
+        if (xQueueSend(xControlQueue, cmd, 0) != pdPASS) {
+            Serial.println("[MQTT] Control Queue full!");
+        }
     }
 }
 
@@ -72,7 +69,8 @@ void mqtt_reconnect() {
 
         if (mqttClient.connect(clientId.c_str())) {
             Serial.println("Thanh cong!");
-            mqttClient.subscribe(MQTT_TOPIC_COMMAND);
+            // Subscribe vào topic điều khiển thiết bị
+            mqttClient.subscribe(MQTT_TOPIC_DEVICE_CONTROL);
         } else {
             Serial.printf("That bai, rc=%d - Thu lai sau 5s\n", mqttClient.state());
             vTaskDelay(pdMS_TO_TICKS(5000));
@@ -85,7 +83,7 @@ void vTaskMQTT(void *pvParameters) {
     mqttClient.setCallback(mqtt_callback);
 
     SensorData_t localData;
-    char msg[192];
+    char msg[256]; // Tăng buffer để chứa chuỗi JSON chi tiết hơn
 
     for (;;) {
         if (WiFi.status() != WL_CONNECTED) {
@@ -97,28 +95,34 @@ void vTaskMQTT(void *pvParameters) {
 
             mqttClient.loop();
 
+            // Lấy dữ liệu an toàn từ Mutex để gửi định kỳ
             if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(100)) == pdPASS) {
                 localData = g_LatestData;
                 xSemaphoreGive(xDataMutex);
 
-                if (localData.temperature != 0) {
+                // Chỉ gửi khi có dữ liệu hợp lệ (tránh gửi rác lúc mới khởi động)
+                if (localData.timestamp > 0) {
+                    // Đóng gói JSON khớp 100% với sensor_data_payload trong hợp đồng
                     snprintf(
                         msg,
                         sizeof(msg),
-                        "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"air_quality\":%d,\"alert_level\":%d,\"timestamp_ms\":%lld}",
+                        "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"pm25\":%d,\"co2\":%d,\"voc\":%d,\"alert_level\":%d,\"timestamp\":%lld}",
                         DEVICE_ID,
                         localData.temperature,
                         localData.humidity,
-                        localData.air_quality,
+                        localData.pm25,
+                        localData.co2,
+                        localData.voc,
                         localData.alert_level,
                         localData.timestamp
                     );
 
-                    mqttClient.publish(MQTT_TOPIC_PUBLISH, msg);
+                    // Publish lên topic data
+                    mqttClient.publish(MQTT_TOPIC_SENSOR_DATA, msg);
                 }
             }
         }
-
+        // Gửi dữ liệu định kỳ mỗi 10 giây theo hợp đồng
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

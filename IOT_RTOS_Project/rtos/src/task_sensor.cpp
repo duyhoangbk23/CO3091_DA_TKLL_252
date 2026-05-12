@@ -1,37 +1,59 @@
-#include <DHT.h>
 #include <esp_timer.h>
 #include "tasks.h"
 #include "global.h"
+#include "SnapshotStore.h"  // SensorSample and shared snapshot store
+
+extern SnapshotStore g_store;
 
 void vTaskSensorRead(void *pvParameters) {
-    // Khởi tạo cảm biến (Đôn kiểm tra lại chân Pin trong config.h)
-    DHT dht(DHT_PIN, DHT22);
-    dht.begin();
 
-    // Biến quản lý chu kỳ 2000ms (2 giây)
+    // Bien quan ly chu ky 2000ms
     TickType_t xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = pdMS_TO_TICKS(2000);
 
     for (;;) {
-        // Chờ đến đúng chu kỳ tiếp theo
+        // Cho den dung chu ky tiep theo
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
-        SensorData_t data;
-        // Đọc dữ liệu từ phần cứng
-        data.temperature = dht.readTemperature();
-        data.humidity = dht.readHumidity();
-        data.air_quality = analogRead(MQ135_PIN);
-        data.alert_level = 0;                      // Mặc định OK, Task_DataProcess sẽ cập nhật
-        data.timestamp   = esp_timer_get_time() / 1000;   // Milliseconds ke tu khi boot
+        // Lay snapshot da duoc hardware layer publish vao SnapshotStore
+        SensorSample hw;
+        if (!g_store.get(hw)) {
+            Serial.println("[Sensor] No sample available yet.");
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
 
-        // Kiểm tra dữ liệu hợp lệ trước khi gửi vào Queue
-        if (!isnan(data.temperature) && !isnan(data.humidity)) {
-            // Gửi dữ liệu vào Queue (không block nếu Queue đầy)
-            if (xQueueSend(xSensorQueue, &data, 0) != pdPASS) {
-                Serial.println("[Sensor] Queue full!");
-            }
-        } else {
-            Serial.println("[Sensor] Failed to read from DHT!");
+        // Kiem tra validity flags truoc khi xu ly
+        if (!hw.ok_sht) {
+            Serial.println("[Sensor] SHTC3 data invalid, skip.");
+            continue;
+        }
+
+        // Map tu SensorSample (Don) sang SensorData_t (Danh)
+        SensorData_t data;
+
+        strncpy(data.device_id, DEVICE_ID, sizeof(data.device_id) - 1);
+        data.device_id[sizeof(data.device_id) - 1] = '\0';
+
+        // Nhiet do + do am (SHTC3, fixed-point x10 -> float)
+        data.temperature = hw.temp_c_x10 / 10.0f;
+        data.humidity    = hw.hum_rh_x10 / 10.0f;
+
+        // PM2.5 + PM10 (PMS7003), -1 neu chua co du lieu
+        data.pm25 = hw.ok_pms ? hw.pm25_atm : -1;
+
+        // CO2 (RS485), 0xFFFF = missing theo quy uoc cua Don
+        data.co2 = hw.ok_co2 ? hw.co2_ppm : 0xFFFF;
+
+        // VOC (analog, voc_avg_x10 / 10 -> index)
+        data.voc = hw.voc_avg_x10 / 10;
+
+        data.alert_level = 0;                    // Mac dinh OK, Task_DataProcess se cap nhat
+        data.timestamp   = esp_timer_get_time(); // Microseconds ke tu khi boot
+
+        // Gui vao Queue (khong block neu Queue day)
+        if (xQueueSend(xSensorQueue, &data, 0) != pdPASS) {
+            Serial.println("[Sensor] Queue full!");
         }
     }
 }

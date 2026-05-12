@@ -1,140 +1,76 @@
 #include <Arduino.h>
+#include <string.h>
 #include "tasks.h"
 #include "global.h"
-#include "config.h"
+//#include "config.h"
+#include "IaqController.h"
+#include "Pins.h" // Chứa định nghĩa 10 LED
 
-// Ham phu: Nhap nhay mot LED bat ky voi so lan va toc do tuy chinh
-static void blinkLED(uint8_t pin, int times, int delay_ms) {
-    for (int i = 0; i < times; i++) {
-        digitalWrite(pin, HIGH);
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
-        digitalWrite(pin, LOW);
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
-}
-
-// Ham phu: Gui bao cao trang thai len MQTT ngay lap tuc
-static void publishStatusReport() {
-    SensorData_t localData;
-
-    // Doc du lieu an toan qua Mutex
-    if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(100)) == pdPASS) {
-        localData = g_LatestData;
-        xSemaphoreGive(xDataMutex);
-    } else {
-        Serial.println("[Control] Mutex timeout, khong the doc du lieu.");
-        return;
-    }
-
-    char report[160];
-    snprintf(report, sizeof(report),
-        "{\"type\":\"status_report\", \"temp\":%.2f, \"humi\":%.2f, \"aqi\":%d, \"alert\":%d, \"ts\":%lld}",
-        localData.temperature,
-        localData.humidity,
-        localData.air_quality,
-        localData.alert_level,
-        localData.timestamp
-    );
-
-    if (mqttClient.connected()) {
-        mqttClient.publish(MQTT_TOPIC_STATUS, report);
-        Serial.println("[Control] Da gui bao cao trang thai len MQTT.");
-    } else {
-        Serial.println("[Control] MQTT chua ket noi, khong the gui bao cao.");
-    }
-}
+extern IaqController g_ctrl;
 
 void vTaskControl(void *pvParameters) {
     char receivedCmd[20];
 
     for (;;) {
-        // Task se "ngu" o day cho den khi co lenh moi tu Queue
+        // Đợi lệnh từ Duy (Backend) qua Queue
         if (xQueueReceive(xControlQueue, &receivedCmd, portMAX_DELAY) == pdPASS) {
-            Serial.printf("[Control] Da nhan lenh tu Dashboard: %s\n", receivedCmd);
+            Serial.printf("[Control] Dashboard Cmd: %s\n", receivedCmd);
 
-            // 1. Lenh tat coi bao dong khan cap
-            if (strcmp(receivedCmd, "MUTE_ALARM") == 0) {
-                digitalWrite(BUZZER_PIN, LOW);
-                Serial.println(" -> Da ngat coi bao dong.");
-            }
-
-            // 2. Lenh kiem tra he thong (Bat LED test)
-            else if (strcmp(receivedCmd, "TEST_LED") == 0) {
-                digitalWrite(LED_GREEN, HIGH);
-                vTaskDelay(pdMS_TO_TICKS(1000));
-                digitalWrite(LED_GREEN, LOW);
-            }
-
-            // 3. Lenh Reset thiet bi
-            else if (strcmp(receivedCmd, "REBOOT") == 0) {
-                Serial.println(" -> Dang khoi dong lai...");
-                vTaskDelay(pdMS_TO_TICKS(500));
+            // --- 1. NHÓM LỆNH HỆ THỐNG ---
+            if (strcmp(receivedCmd, "REBOOT") == 0) {
                 ESP.restart();
             }
+            else if (strcmp(receivedCmd, "TEST_LED") == 0) {
+                // Sáng toàn bộ 10 LED trong 1 giây để kiểm tra phần cứng của Đôn
+                IaqState testOn;
+                testOn.wantHepa = testOn.wantVent = testOn.wantCarbon = testOn.wantAc = testOn.wantHumid = true;
+                testOn.alarmCO2 = testOn.alarmPM = testOn.alarmVOC = testOn.alarmTemp = testOn.alarmRH = true;
 
-            // 4. Lenh LED chuan tu Backend
-            else if (strcmp(receivedCmd, "LED_ON") == 0) {
-                digitalWrite(LED_GREEN, HIGH);
-                Serial.println(" -> LED: BAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_OFF") == 0) {
-                digitalWrite(LED_GREEN, LOW);
-                Serial.println(" -> LED: TAT.");
-            }
+                g_ctrl.apply(testOn); 
+                vTaskDelay(pdMS_TO_TICKS(1000));
 
-            // 5. Dieu khien LED: bat LED theo mau chi dinh
-            //    Lenh: "LED_RED_ON", "LED_YLW_ON", "LED_GRN_ON"
-            //          "LED_RED_OFF", "LED_YLW_OFF", "LED_GRN_OFF"
-            else if (strcmp(receivedCmd, "LED_RED_ON") == 0) {
-                digitalWrite(LED_RED, HIGH);
-                Serial.println(" -> LED Do: BAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_RED_OFF") == 0) {
-                digitalWrite(LED_RED, LOW);
-                Serial.println(" -> LED Do: TAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_YLW_ON") == 0) {
-                digitalWrite(LED_YELLOW, HIGH);
-                Serial.println(" -> LED Vang: BAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_YLW_OFF") == 0) {
-                digitalWrite(LED_YELLOW, LOW);
-                Serial.println(" -> LED Vang: TAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_GRN_ON") == 0) {
-                digitalWrite(LED_GREEN, HIGH);
-                Serial.println(" -> LED Xanh: BAT.");
-            }
-            else if (strcmp(receivedCmd, "LED_GRN_OFF") == 0) {
-                digitalWrite(LED_GREEN, LOW);
-                Serial.println(" -> LED Xanh: TAT.");
+   
+                IaqState testOff; 
+                testOff.wantHepa = testOff.wantVent = testOff.wantCarbon = testOff.wantAc = testOff.wantHumid = false;
+                testOff.alarmCO2 = testOff.alarmPM = testOff.alarmVOC = testOff.alarmTemp = testOff.alarmRH = false;
+                g_ctrl.apply(testOff);
             }
 
-            // 5. Dieu khien LED: nhap nhay theo mau chi dinh (5 lan, 200ms)
-            //    Lenh: "BLINK_RED", "BLINK_YLW", "BLINK_GRN"
-            else if (strcmp(receivedCmd, "BLINK_RED") == 0) {
-                Serial.println(" -> Nhap nhay LED Do...");
-                blinkLED(LED_RED, 5, 200);
-            }
-            else if (strcmp(receivedCmd, "BLINK_YLW") == 0) {
-                Serial.println(" -> Nhap nhay LED Vang...");
-                blinkLED(LED_YELLOW, 5, 200);
-            }
-            else if (strcmp(receivedCmd, "BLINK_GRN") == 0) {
-                Serial.println(" -> Nhap nhay LED Xanh...");
-                blinkLED(LED_GREEN, 5, 200);
-            }
+            // --- 2. NHÓM ĐIỀU KHIỂN 5 THIẾT BỊ (LED XANH) ---
+            else if (strcmp(receivedCmd, "HEPA_ON") == 0)    ledWrite(LED_HEPA_G, HIGH);
+            else if (strcmp(receivedCmd, "HEPA_OFF") == 0)   ledWrite(LED_HEPA_G, LOW);
+            
+            else if (strcmp(receivedCmd, "VENT_ON") == 0)    ledWrite(LED_VENT_G, HIGH);
+            else if (strcmp(receivedCmd, "VENT_OFF") == 0)   ledWrite(LED_VENT_G, LOW);
+            
+            else if (strcmp(receivedCmd, "CARBON_ON") == 0)  ledWrite(LED_CARBON_G, HIGH);
+            else if (strcmp(receivedCmd, "CARBON_OFF") == 0) ledWrite(LED_CARBON_G, LOW);
+            
+            else if (strcmp(receivedCmd, "AC_ON") == 0)      ledWrite(LED_AC_G, HIGH);
+            else if (strcmp(receivedCmd, "AC_OFF") == 0)     ledWrite(LED_AC_G, LOW);
+            
+            else if (strcmp(receivedCmd, "HUMID_ON") == 0)   ledWrite(LED_HUMID_G, HIGH);
+            else if (strcmp(receivedCmd, "HUMID_OFF") == 0)  ledWrite(LED_HUMID_G, LOW);
 
-            // 6. Gui bao cao trang thai he thong ngay lap tuc len MQTT
-            //    Lenh: "GET_STATUS"
+            // --- 3. NHÓM ĐIỀU KHIỂN 5 CẢNH BÁO (LED ĐỎ) ---
+            else if (strcmp(receivedCmd, "ALARM_CO2_ON") == 0)  ledWrite(LED_CO2_R, HIGH);
+            else if (strcmp(receivedCmd, "ALARM_CO2_OFF") == 0) ledWrite(LED_CO2_R, LOW);
+            
+            else if (strcmp(receivedCmd, "ALARM_PM_ON") == 0)   ledWrite(LED_PM_R, HIGH);
+            else if (strcmp(receivedCmd, "ALARM_PM_OFF") == 0)  ledWrite(LED_PM_R, LOW);
+            
+            else if (strcmp(receivedCmd, "ALARM_VOC_ON") == 0)  ledWrite(LED_VOC_R, HIGH);
+            else if (strcmp(receivedCmd, "ALARM_VOC_OFF") == 0) ledWrite(LED_VOC_R, LOW);
+            
+            else if (strcmp(receivedCmd, "ALARM_TEMP_ON") == 0) ledWrite(LED_TEMP_R, HIGH);
+            else if (strcmp(receivedCmd, "ALARM_TEMP_OFF") == 0) ledWrite(LED_TEMP_R, LOW);
+            
+            else if (strcmp(receivedCmd, "ALARM_RH_ON") == 0)   ledWrite(LED_RH_R, HIGH);
+            else if (strcmp(receivedCmd, "ALARM_RH_OFF") == 0)  ledWrite(LED_RH_R, LOW);
+
+            // --- 4. LỆNH TRUY VẤN TRẠNG THÁI ---
             else if (strcmp(receivedCmd, "GET_STATUS") == 0) {
-                Serial.println(" -> Dang gui bao cao trang thai...");
-                publishStatusReport();
-            }
-
-            // Lenh khong hop le
-            else {
-                Serial.printf("[Control] Lenh khong xac dinh: %s\n", receivedCmd);
+                Serial.println(" -> Status Request Received.");
             }
         }
     }

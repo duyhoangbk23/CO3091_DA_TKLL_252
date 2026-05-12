@@ -1,51 +1,42 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+// #ifndef CONFIG_H
+// #define CONFIG_H
 
-#include <Arduino.h>
+// #include <Arduino.h>
 
-// Định nghĩa ngưỡng (Thresholds) 
-#define TEMP_WARN 35.0f   
-#define TEMP_CRIT 40.0f   
-#define AQI_WARN  300     
-#define AQI_CRIT  500     
+// // Định nghĩa ngưỡng (Thresholds) — theo tiêu chuẩn quốc tế
+// #define TEMP_WARN   35.0f   // °C
+// #define TEMP_CRIT   40.0f   // °C
 
-// Định nghĩa chân phần cứng (Hardware Pins)
-#define DHT_PIN     4     // Data, pull-up 10k -> 3.3V [cite: 24]
-#define MQ135_PIN   34    // ADC1_CH6, 12-bit [cite: 25]
-#define I2C_SDA     21    // LCD SDA [cite: 26]
-#define I2C_SCL     22    // LCD SCL [cite: 26]
-#define BUZZER_PIN  25    // Active high [cite: 27]
-#define LED_RED     26    // Báo động nguy hiểm [cite: 28]
-#define LED_YELLOW  27    // Cảnh báo [cite: 29]
-#define LED_GREEN   32    // Trạng thái bình thường [cite: 30]
+// // CO2 (ppm)
+// #define CO2_WARN    1000    // Bắt đầu tăng thông gió
+// #define CO2_CRIT    1500    // Cảnh báo
 
-#ifndef DEVICE_ID
-#define DEVICE_ID "esp32_device"
-#endif
+// // PM2.5 / PM10 (µg/m3)
+// #define PM_WARN     15      // Bắt đầu lọc HEPA
+// #define PM_CRIT     35      // Cảnh báo
 
-#ifndef MQTT_SERVER
-#define MQTT_SERVER "192.168.1.100"  // Thay bang IP LAN cua may chay Mosquitto/Docker host
-#endif
+// // VOC (raw index)
+// #define VOC_WARN    500     // Bắt đầu tăng thông gió / lọc than
+// #define VOC_CRIT    1000    // Cảnh báo
 
-#ifndef MQTT_PORT
-#define MQTT_PORT   1883
-#endif
+// // Định nghĩa chân phần cứng (Hardware Pins)
+// #define DHT_PIN     4     // Data, pull-up 10k -> 3.3V [cite: 24]
+// #define MQ135_PIN   34    // ADC1_CH6, 12-bit [cite: 25]
+// #define I2C_SDA     21    // LCD SDA [cite: 26]
+// #define I2C_SCL     22    // LCD SCL [cite: 26]
+// #define LED_RED     26    // Báo động nguy hiểm [cite: 28]
+// #define LED_YELLOW  27    // Cảnh báo [cite: 29]
+// #define LED_GREEN   32    // Trạng thái bình thường [cite: 30]
 
-#ifndef MQTT_TOPIC_PUBLISH
-#define MQTT_TOPIC_PUBLISH  "iot/sensor/data"     // ESP32 -> Backend
-#endif
-#ifndef MQTT_TOPIC_STATUS
-#define MQTT_TOPIC_STATUS   "iot/device/status"    // GET_STATUS response
-#endif
-#ifndef MQTT_TOPIC_COMMAND
-#define MQTT_TOPIC_COMMAND  "iot/device/control"  // Backend -> ESP32
-#endif
+// #define MQTT_SERVER "localhost"
+// #define MQTT_PORT   1883
 
-#ifndef WIFI_SSID
-#define WIFI_SSID "Ten_Wifi"
-#endif
-#ifndef WIFI_PASS
-#define WIFI_PASS "Mat_Khau_Wifi"
-#endif
+// // Topics lay tu contract chung — KHONG dinh nghia lai o day
+// #include "../../common/mqtt_topics.h"
 
-#endif
+// #define DEVICE_ID "esp32_1"  // ID dinh danh thiet bi, dong bo voi data_format.json
+
+// #define WIFI_SSID "Ten_Wifi"
+// #define WIFI_PASS "Mat_Khau_Wifi"
+
+// #endif

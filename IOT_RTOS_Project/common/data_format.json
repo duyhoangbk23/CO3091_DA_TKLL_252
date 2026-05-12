@@ -1,5 +1,5 @@
 {
-    "_comment": "CONTRACT CHUNG — Data Format. KHONG thay doi neu chua thong nhat.",
+    "_comment": "CONTRACT CHUNG — Data Format. Đã đồng bộ hoàn toàn với struct SensorData_t của Danh.",
 
     "mqtt_topics": {
         "sensor_data":     "iot/sensor/data",
@@ -8,41 +8,46 @@
     },
 
     "sensor_data_payload": {
-        "_description": "ESP32 publish len iot/sensor/data moi 10 giay",
-        "device_id":   { "type": "string",  "example": "esp32_1" },
-        "temperature": { "type": "float",   "unit": "°C",  "example": 32.50 },
-        "humidity":    { "type": "float",   "unit": "%RH", "example": 65.00 },
-        "aqi":         { "type": "integer", "unit": "raw ADC (0-4095)", "example": 350 },
-        "alert":       { "type": "integer", "values": "0=OK, 1=WARN, 2=CRITICAL", "example": 1 },
-        "timestamp":   { "type": "int64",   "unit": "microseconds since boot (esp_timer_get_time)", "example": 123456789 }
+        "_description": "ESP32 publish lên iot/sensor/data mỗi 10 giây",
+        "device_id":   { "type": "string",   "example": "esp32_1" },
+        "temperature": { "type": "float",    "unit": "°C",  "example": 32.50 },
+        "humidity":    { "type": "float",    "unit": "%RH", "example": 65.00 },
+        "pm25":        { "type": "int16",    "unit": "µg/m3", "example": 15 },
+        "co2":         { "type": "uint16",   "unit": "ppm", "example": 450 },
+        "voc":         { "type": "uint16",   "unit": "raw index", "example": 350 },
+        "alert_level": { "type": "uint8",    "values": "0=OK, 1=WARN, 2=CRITICAL", "example": 0 },
+        "timestamp":   { "type": "int64",    "unit": "microseconds (esp_timer_get_time)", "example": 123456789 }
     },
 
     "device_status_payload": {
-        "_description": "ESP32 publish len iot/device/status khi nhan lenh GET_STATUS",
-        "type":        { "type": "string",  "value": "status_report" },
-        "device_id":   { "type": "string",  "example": "esp32_1" },
-        "temperature": { "type": "float",   "example": 32.50 },
-        "humidity":    { "type": "float",   "example": 65.00 },
-        "aqi":         { "type": "integer", "example": 350 },
-        "alert":       { "type": "integer", "example": 1 },
-        "timestamp":   { "type": "int64",   "example": 123456789 }
+        "_description": "ESP32 phản hồi trạng thái chi tiết khi Duy gửi lệnh GET_STATUS",
+        "device_id":   { "type": "string",   "example": "esp32_1" },
+        "temperature": { "type": "float",    "example": 32.50 },
+        "humidity":    { "type": "float",    "example": 65.00 },
+        "pm25":        { "type": "int16",    "example": 15 },
+        "co2":         { "type": "uint16",   "example": 450 },
+        "voc":         { "type": "uint16",   "example": 350 },
+        "alert_level": { "type": "uint8",    "example": 0 },
+        "timestamp":   { "type": "int64",    "example": 123456789 }
     },
 
     "control_command_payload": {
-        "_description": "Backend publish len iot/device/control de dieu khien ESP32",
+        "_description": "Backend điều khiển 10 thiết bị của hệ thống",
         "command": {
             "type": "string",
             "valid_values": [
-                "MUTE_ALARM",
-                "TEST_LED",
-                "REBOOT",
-                "LED_RED_ON",  "LED_RED_OFF",
-                "LED_YLW_ON",  "LED_YLW_OFF",
-                "LED_GRN_ON",  "LED_GRN_OFF",
-                "BLINK_RED",   "BLINK_YLW",  "BLINK_GRN",
-                "GET_STATUS"
+                "REBOOT", "TEST_LED", "MUTE_ALARM", "GET_STATUS",
+                "HEPA_ON",      "HEPA_OFF",
+                "VENT_ON",      "VENT_OFF",
+                "CARBON_ON",    "CARBON_OFF",
+                "AC_ON",        "AC_OFF",
+                "HUMID_ON",     "HUMID_OFF",
+                "ALARM_CO2_ON", "ALARM_CO2_OFF",
+                "ALARM_PM_ON",  "ALARM_PM_OFF",
+                "ALARM_VOC_ON", "ALARM_VOC_OFF",
+                "ALARM_TEMP_ON","ALARM_TEMP_OFF",
+                "ALARM_RH_ON",  "ALARM_RH_OFF"
             ],
-            "max_length": 19,
             "example": "MUTE_ALARM"
         }
     }

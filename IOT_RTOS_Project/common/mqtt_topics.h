@@ -7,7 +7,10 @@
 //  Tat ca 3 module deu phai dung file nay
 //  KHONG duoc doi topic ma chua thong nhat
 // ============================================================
-
+#define WIFI_SSID "Ten_Wifi"
+#define WIFI_PASS "Mat_Khau_Wifi"
+#define MQTT_SERVER "localhost"
+#define MQTT_PORT   1883
 // ESP32 → Backend: du lieu cam bien dinh ky 10s
 #define MQTT_TOPIC_SENSOR_DATA    "iot/sensor/data"
 

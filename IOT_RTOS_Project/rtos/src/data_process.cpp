@@ -1,38 +1,54 @@
 #include "tasks.h"
 #include "global.h"
+#include "IaqEvaluator.h"
+#include "sensor_data.h"
+
+// Sử dụng đối tượng evaluator và state đã khởi tạo toàn cục
+extern IaqEvaluator g_eval;
+extern IaqState g_iaq; 
 
 void vTaskDataProcess(void *pvParameters) {
     SensorData_t receivedData;
     
     for (;;) {
-        // 1. Doi du lieu tu Queue (Tu Task_SensorRead gui qua)
+        // 1. Đợi dữ liệu từ Sensor Task gửi qua Queue
         if (xQueueReceive(xSensorQueue, &receivedData, portMAX_DELAY) == pdPASS) {
             
-            // 2. Logic so sanh nguong (3 muc: OK / WARNING / DANGER)
-            bool isCrit = (receivedData.temperature > TEMP_CRIT) || (receivedData.air_quality > AQI_CRIT);
-            bool isWarn = (receivedData.temperature > TEMP_WARN) || (receivedData.air_quality > AQI_WARN);
+            // --- BƯỚC TÍNH TOÁN QUAN TRỌNG NHẤT ---
+            // Chuyển đổi SensorData_t sang SensorSample để nạp vào bộ máy của Đôn
+            SensorSample sample;
+            sample.temp_c_x10 = (int16_t)(receivedData.temperature * 10);
+            sample.hum_rh_x10 = (uint16_t)(receivedData.humidity * 10);
+            sample.pm25_atm   = receivedData.pm25;
+            sample.co2_ppm    = receivedData.co2;
+            sample.voc_raw    = receivedData.voc;
 
-            uint8_t new_level;
-            if (isCrit)       new_level = 2; // DANGER
-            else if (isWarn)  new_level = 1; // WARNING
-            else              new_level = 0; // OK
+            // Gọi "bộ não" tính toán của Đôn để phân tích trạng thái IAQ
+            // newState chứa toàn bộ quyết định: bật máy lọc nào, đèn đỏ nào sáng
+            IaqState newState = g_eval.evaluate(sample);
 
-            int error_count = new_level; // dung de kich hoat Alert Semaphore
+            // 2. Tổng hợp alert_level dựa trên kết quả tính toán
+            uint8_t calculated_level = 0;
+            if (newState.alarmCO2 || newState.alarmPM || newState.alarmVOC) {
+                calculated_level = 2; // Mức báo động Đỏ
+            } else if (newState.wantVent || newState.wantHepa || newState.wantCarbon) {
+                calculated_level = 1; // Mức cảnh báo Vàng (đang xử lý môi trường)
+            }
+            receivedData.alert_level = calculated_level;
 
-            // Cap nhat muc do canh bao vao goi tin
-            receivedData.alert_level = new_level;
-
-            // 3. CAP NHAT DU LIEU TOAN CUC (Dung Mutex de bao ve)
+            // 3. Cập nhật dữ liệu vào biến toàn cục dưới sự bảo vệ của Mutex
             if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(50)) == pdPASS) {
                 g_LatestData = receivedData;
+                
+                // Dòng này chính là chìa khóa để 10 LED của Đôn hoạt động
+                g_iaq = newState; 
+                
                 xSemaphoreGive(xDataMutex);
             }
 
-            // 4. Kich hoat Task_Alert neu co bat thuong
-            if (error_count > 0) {
-                for (int i = 0; i < error_count; i++) {
-                    xSemaphoreGive(xAlertSem);
-                }
+            // 4. Kích hoạt Task Alert để thực thi việc bật/tắt LED ngay lập tức
+            if (calculated_level > 0) {
+                xSemaphoreGive(xAlertSem);
             }
         }
     }
