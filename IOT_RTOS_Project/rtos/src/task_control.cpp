@@ -5,6 +5,8 @@
 //#include "config.h"
 #include "IaqController.h"
 #include "Pins.h" // Chứa định nghĩa 10 LED
+#include <ArduinoJson.h>
+#include "mqtt_topics.h" // Sử dụng topic từ hợp đồng chung
 
 extern IaqController g_ctrl;
 
@@ -70,7 +72,32 @@ void vTaskControl(void *pvParameters) {
 
             // --- 4. LỆNH TRUY VẤN TRẠNG THÁI ---
             else if (strcmp(receivedCmd, "GET_STATUS") == 0) {
-                Serial.println(" -> Status Request Received.");
+                Serial.println("[Control] Status Request Received. Sending response...");
+
+                SensorData_t localData;
+                // 1. Lấy dữ liệu mới nhất an toàn qua Mutex
+                if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(100)) == pdPASS) {
+                    localData = g_LatestData;
+                    xSemaphoreGive(xDataMutex);
+
+        // 2. Đóng gói JSON theo đúng "device_status_payload"
+                    StaticJsonDocument<256> doc;
+                    doc["device_id"]   = localData.device_id;
+                    doc["temperature"] = localData.temperature;
+                    doc["humidity"]    = localData.humidity;
+                    doc["pm25"]        = localData.pm25;
+                    doc["co2"]         = localData.co2;
+                    doc["voc"]         = localData.voc;
+                    doc["alert_level"] = localData.alert_level;
+                    doc["timestamp"]   = localData.timestamp;
+
+                    char buffer[256];
+                    serializeJson(doc, buffer);
+
+                 // 3. Publish phản hồi lên topic status
+                    mqttClient.publish(MQTT_TOPIC_DEVICE_STATUS, buffer); 
+                    Serial.println("[Control] Device status sent to Backend.");
+                }
             }
         }
     }
