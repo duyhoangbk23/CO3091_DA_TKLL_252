@@ -28,9 +28,6 @@ typedef struct {
     uint8_t  alert_level;   // 0=OK, 1=WARN, 2=CRITICAL
     int64_t  timestamp;     // esp_timer_get_time()
 } SensorData_t;
-extern IaqEvaluator g_eval;
-extern IaqController g_ctrl;
-extern IaqState g_iaq; 
 
 extern WiFiClient espClient;
 extern PubSubClient mqttClient;
