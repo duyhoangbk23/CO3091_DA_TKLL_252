@@ -2,6 +2,7 @@
 #include "../../common/sensor_data.h"
 
 SensorData_t g_LatestData = {"", 0.0f, 0.0f, -1, 0xFFFF, 0, 0, 0};
+IaqState g_iaq{};
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 //String remote_command = "";

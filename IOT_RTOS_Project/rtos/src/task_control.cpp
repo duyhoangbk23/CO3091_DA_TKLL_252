@@ -9,6 +9,7 @@
 #include "mqtt_topics.h" // Sử dụng topic từ hợp đồng chung
 
 extern IaqController g_ctrl;
+extern IaqState g_iaq;
 
 void vTaskControl(void *pvParameters) {
     char receivedCmd[20];
@@ -21,6 +22,25 @@ void vTaskControl(void *pvParameters) {
             // --- 1. NHÓM LỆNH HỆ THỐNG ---
             if (strcmp(receivedCmd, "REBOOT") == 0) {
                 ESP.restart();
+            }
+            else if (strcmp(receivedCmd, "LED_ON") == 0) {
+                // Backend: POST /api/control command ON → LED_ON (đồng bộ iot_backend)
+                IaqState on{};
+                on.wantHepa = on.wantVent = on.wantCarbon = on.wantAc = on.wantHumid = true;
+                g_ctrl.apply(on);
+            }
+            else if (strcmp(receivedCmd, "LED_OFF") == 0) {
+                IaqState off{};
+                g_ctrl.apply(off);
+            }
+            else if (strcmp(receivedCmd, "MUTE_ALARM") == 0) {
+                if (xSemaphoreTake(xDataMutex, pdMS_TO_TICKS(100)) == pdPASS) {
+                    IaqState s = g_iaq;
+                    s.alarmCO2 = s.alarmPM = s.alarmVOC = s.alarmTemp = s.alarmRH = false;
+                    g_iaq = s;
+                    xSemaphoreGive(xDataMutex);
+                    g_ctrl.apply(s);
+                }
             }
             else if (strcmp(receivedCmd, "TEST_LED") == 0) {
                 // Sáng toàn bộ 10 LED trong 1 giây để kiểm tra phần cứng của Đôn

@@ -6,10 +6,15 @@
 //  CONTRACT CHUNG — MQTT Topics
 //  Tat ca 3 module deu phai dung file nay
 //  KHONG duoc doi topic ma chua thong nhat
+//  CONTRACT CHUNG — MQTT Topics (RTOS + firmware)
+//  Chuỗi topic PHẢI trùng common/data_format.json → "mqtt_topics"
+//  Backend Node đọc JSON đó (src/config/mqttContract.js)
+//  KHONG doi topic ma chua cap nhat data_format.json
 // ============================================================
 #define WIFI_SSID "Ten_Wifi"
 #define WIFI_PASS "Mat_Khau_Wifi"
-#define MQTT_SERVER "localhost"
+/* IP/hostname broker — phải trùng MQTT_BROKER mà backend dùng (ESP32 không resolve được "localhost"). */
+#define MQTT_SERVER "192.168.1.100"
 #define MQTT_PORT   1883
 // ESP32 → Backend: du lieu cam bien dinh ky 10s
 #define MQTT_TOPIC_SENSOR_DATA    "iot/sensor/data"

@@ -1,10 +1,12 @@
 const mqtt = require('mqtt');
 require('dotenv').config();
+const { mqttTopics, mapSensorPayload } = require('../config/mqttContract');
 
-// Configuration
+// Configuration — topic mặc định từ common/data_format.json
 const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || 'iot/sensor/data';
-const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || 'iot/device/control';
+const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || mqttTopics.sensor_data;
+const TOPIC_STATUS = process.env.MQTT_TOPIC_STATUS || mqttTopics.device_status;
+const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || mqttTopics.device_control;
 
 
 let client = null;
@@ -23,9 +25,9 @@ function init(onDataReceived) {
 
     client.on('connect', () => {
         console.log('✓ Connected to MQTT Broker: ' + brokerUrl);
-        client.subscribe(TOPIC_DATA, (err) => {
+        client.subscribe([TOPIC_DATA, TOPIC_STATUS], { qos: 1 }, (err) => {
             if (!err) {
-                console.log(`✓ Subscribed to topic: ${TOPIC_DATA}`);
+                console.log(`✓ Subscribed to topics: ${TOPIC_DATA}, ${TOPIC_STATUS}`);
             }
         });
     });
@@ -36,17 +38,8 @@ function init(onDataReceived) {
             const rawData = JSON.parse(message.toString());
             console.log(`📩 MQTT Message [${topic}]:`, rawData);
 
-            if (topic === TOPIC_DATA) {
-                // Sensor payload format: { device_id, temperature, humidity, air_quality, alert_level, timestamp_ms }
-                const parsedTimestamp = parseInt(rawData.timestamp_ms ?? rawData.timestamp, 10);
-                const mappedData = {
-                    device_id: rawData.device_id || 'esp32_device', 
-                    temperature: rawData.temperature,
-                    humidity: rawData.humidity,
-                    air_quality: rawData.air_quality || 0,
-                    alert_level: rawData.alert_level || 0,
-                    timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp
-                };
+            if (topic === TOPIC_DATA || topic === TOPIC_STATUS) {
+                const mappedData = mapSensorPayload(rawData);
 
                 latestData = mappedData;
 

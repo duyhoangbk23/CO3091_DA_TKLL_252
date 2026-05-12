@@ -1,6 +1,9 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+// SensorData_t phải khớp common/data_format.json → "sensor_data_payload"
+// (Backend dùng cùng file JSON làm hợp đồng; không include .h từ Node)
+
 #include <Arduino.h>
 #include "config.h"
 

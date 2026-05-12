@@ -1,5 +1,5 @@
-{
-    "_comment": "CONTRACT CHUNG — Data Format. Đã đồng bộ hoàn toàn với struct SensorData_t của Danh.",
+{   "_comment": "CONTRACT CHUNG — Data Format. Đã đồng bộ hoàn toàn với struct SensorData_t của Danh.",
+    "_comment": "CONTRACT CHUNG — Data Format. Khớp SensorData_t (common/global.h) và MQTT topics (common/mqtt_topics.h). Backend Node: iot_backend/backend/src/config/mqttContract.js đọc file này.",
 
     "mqtt_topics": {
         "sensor_data":     "iot/sensor/data",
@@ -37,6 +37,7 @@
             "type": "string",
             "valid_values": [
                 "REBOOT", "TEST_LED", "MUTE_ALARM", "GET_STATUS",
+                "LED_ON", "LED_OFF",
                 "HEPA_ON",      "HEPA_OFF",
                 "VENT_ON",      "VENT_OFF",
                 "CARBON_ON",    "CARBON_OFF",

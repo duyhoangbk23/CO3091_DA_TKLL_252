@@ -16,7 +16,11 @@ let   _connected     = true;
 const fakeMqttClient = {
     get connected() { return _connected; },
     on(event, cb)        { _mqttHandlers[event] = cb; return this; },
-    subscribe(topic, cb) { _subscriptions.push(topic); if (cb) cb(null); },
+    subscribe(topic, optsOrCb, maybeCb) {
+        _subscriptions.push(topic);
+        const cb = typeof optsOrCb === 'function' ? optsOrCb : maybeCb;
+        if (typeof cb === 'function') cb(null);
+    },
     publish(topic, msg)  { _published.push({ topic, payload: msg.toString() }); },
     // Helper dung trong test
     _trigger(event, ...args) { if (_mqttHandlers[event]) _mqttHandlers[event](...args); }

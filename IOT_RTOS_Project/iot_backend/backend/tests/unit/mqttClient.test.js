@@ -21,7 +21,10 @@ function makeFakeClient(connected = true) {
     const fakeClient = {
         connected,
         on: jest.fn((event, cb) => { handlers[event] = cb; }),
-        subscribe: jest.fn((topic, cb) => cb && cb(null)),
+        subscribe: jest.fn((topic, optsOrCb, maybeCb) => {
+            const cb = typeof optsOrCb === 'function' ? optsOrCb : maybeCb;
+            if (typeof cb === 'function') cb(null);
+        }),
         publish: jest.fn(),
         _trigger: (event, ...args) => handlers[event] && handlers[event](...args)
     };
@@ -42,7 +45,7 @@ describe('mqttClient.init()', () => {
         expect(mqtt.connect).toHaveBeenCalledWith(expect.stringContaining('mqtt://'));
     });
 
-    test('subscribe vao topic iot/sensor/data sau khi connect', () => {
+    test('subscribe vao sensor_data va device_status sau khi connect', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
@@ -53,7 +56,8 @@ describe('mqttClient.init()', () => {
         fakeClient._trigger('connect');
 
         expect(fakeClient.subscribe).toHaveBeenCalledWith(
-            'iot/sensor/data',
+            ['iot/sensor/data', 'iot/device/status'],
+            { qos: 1 },
             expect.any(Function)
         );
     });
@@ -85,8 +89,43 @@ describe('mqttClient.init()', () => {
                 humidity:    65.0,
                 device_id:   'esp32_device',
                 air_quality: 220,
+                pm25: 220,
+                co2: 0,
+                voc: 0,
                 alert_level: 0,
                 timestamp_ms: 123456
+            })
+        );
+    });
+
+    test('RTOS payload pm25/co2/voc map dung va air_quality = pm25', () => {
+        const fakeClient = makeFakeClient();
+        mqtt.connect.mockReturnValue(fakeClient);
+
+        const callback = jest.fn();
+        const mqttClient = require('../../src/mqtt/mqttClient');
+        mqttClient.init(callback);
+
+        fakeClient._trigger('connect');
+
+        const payload = JSON.stringify({
+            device_id: 'esp32_1',
+            temperature: 32.5,
+            humidity: 65,
+            pm25: 15,
+            co2: 450,
+            voc: 350,
+            alert_level: 0,
+            timestamp: 999888
+        });
+        fakeClient._trigger('message', 'iot/sensor/data', Buffer.from(payload));
+
+        expect(callback).toHaveBeenCalledWith(
+            expect.objectContaining({
+                pm25: 15,
+                co2: 450,
+                voc: 350,
+                air_quality: 15
             })
         );
     });
@@ -211,6 +250,9 @@ describe('mqttClient.getLatestData()', () => {
         expect(data.temperature).toBe(33.1);
         expect(data.humidity).toBe(55.5);
         expect(data.air_quality).toBe(350);
+        expect(data.pm25).toBe(350);
+        expect(data.co2).toBe(0);
+        expect(data.voc).toBe(0);
         expect(data.alert_level).toBe(1);
         expect(data.timestamp_ms).toBe(999);
     });

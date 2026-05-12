@@ -6,6 +6,9 @@ let latestData = {
     device_id: 'esp32_device',
     temperature: 0,
     humidity: 0,
+    pm25: 0,
+    co2: 0,
+    voc: 0,
     air_quality: 0,
     alert_level: 0,
     timestamp_ms: 0,
@@ -25,18 +28,25 @@ let latestData = {
 async function handleNewSensorData(data) {
     try {
         const parsedTimestamp = parseInt(data.timestamp_ms ?? data.timestamp, 10);
+        const pm25 = parseInt(data.pm25, 10) || 0;
+        const co2 = parseInt(data.co2, 10) || 0;
+        const voc = parseInt(data.voc, 10) || 0;
+        const airQ = parseInt(data.air_quality, 10) || 0;
         latestData = {
             device_id: data.device_id || 'esp32_device',
             temperature: parseFloat(data.temperature),
             humidity: parseFloat(data.humidity),
-            air_quality: parseInt(data.air_quality, 10) || 0,
+            pm25,
+            co2,
+            voc,
+            air_quality: airQ,
             alert_level: parseInt(data.alert_level, 10) || 0,
             timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
             received_at: new Date().toISOString(),
             status: 'online'
         };
 
-        logger.info(`New MQTT Data: Temp=${latestData.temperature}°C, Humidity=${latestData.humidity}%, AQ=${latestData.air_quality}, Alert=${latestData.alert_level}`);
+        logger.info(`New MQTT Data: Temp=${latestData.temperature}°C, Humidity=${latestData.humidity}%, PM2.5=${latestData.pm25}, CO2=${latestData.co2}, VOC=${latestData.voc}, Alert=${latestData.alert_level}`);
 
         // Save to database with optional device_id separate from the sensor payload
         await sensorModel.insertSensorData({

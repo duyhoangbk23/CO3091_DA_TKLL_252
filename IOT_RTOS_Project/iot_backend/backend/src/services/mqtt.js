@@ -1,9 +1,11 @@
 const mqtt = require('mqtt');
 const logger = require('../logger/winston');
+const { mqttTopics, mapSensorPayload } = require('../config/mqttContract');
 
 const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || 'iot/sensor/data';
-const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || 'iot/device/control';
+const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || mqttTopics.sensor_data;
+const TOPIC_STATUS = process.env.MQTT_TOPIC_STATUS || mqttTopics.device_status;
+const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || mqttTopics.device_control;
 
 let client = null;
 let dataCallback = null;
@@ -28,11 +30,12 @@ function init(onDataReceived) {
 
     client.on('connect', () => {
         logger.info(`✓ Connected to MQTT Broker: ${brokerUrl}`);
-        client.subscribe(TOPIC_DATA, (err) => {
+        const subs = [TOPIC_DATA, TOPIC_STATUS];
+        client.subscribe(subs, { qos: 1 }, (err) => {
             if (err) {
-                logger.error(`Failed to subscribe to ${TOPIC_DATA}: ${err.message}`);
+                logger.error(`Failed to subscribe to ${subs.join(', ')}: ${err.message}`);
             } else {
-                logger.info(`✓ Subscribed to topic: ${TOPIC_DATA}`);
+                logger.info(`✓ Subscribed to topics: ${subs.join(', ')}`);
             }
         });
     });
@@ -42,17 +45,8 @@ function init(onDataReceived) {
             const rawData = JSON.parse(message.toString());
             logger.debug(`📩 MQTT Message [${topic}]:`, rawData);
 
-            if (topic === TOPIC_DATA && dataCallback) {
-                const parsedTimestamp = parseInt(rawData.timestamp_ms ?? rawData.timestamp, 10);
-                const mappedData = {
-                    device_id: rawData.device_id || 'esp32_device',
-                    temperature: rawData.temperature,
-                    humidity: rawData.humidity,
-                    air_quality: rawData.air_quality || 0,
-                    alert_level: rawData.alert_level || 0,
-                    timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp
-                };
-
+            if ((topic === TOPIC_DATA || topic === TOPIC_STATUS) && dataCallback) {
+                const mappedData = mapSensorPayload(rawData);
                 dataCallback(mappedData);
             }
         } catch (error) {
