@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define DEVICE_ID "esp32_sensor_001"
+#define DEVICE_ID "esp32_device"
 
 static constexpr int PMS_RX_PIN = 26;
 static constexpr int PMS_TX_PIN = 27;
