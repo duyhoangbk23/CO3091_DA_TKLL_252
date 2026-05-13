@@ -1,7 +1,6 @@
 #include "tasks.h"
 #include "global.h"
 #include "IaqEvaluator.h"
-#include "sensor_data.h"
 
 // Sử dụng đối tượng evaluator và state đã khởi tạo toàn cục
 extern IaqEvaluator g_eval;
@@ -17,11 +16,17 @@ void vTaskDataProcess(void *pvParameters) {
             // --- BƯỚC TÍNH TOÁN QUAN TRỌNG NHẤT ---
             // Chuyển đổi SensorData_t sang SensorSample để nạp vào bộ máy của Đôn
             SensorSample sample;
-            sample.temp_c_x10 = (int16_t)(receivedData.temperature * 10);
-            sample.hum_rh_x10 = (uint16_t)(receivedData.humidity * 10);
+            sample.ok_sht = !isnan(receivedData.temperature) && !isnan(receivedData.humidity);
+            if (sample.ok_sht) {
+                sample.temp_c_x10 = (int16_t)(receivedData.temperature * 10);
+                sample.hum_rh_x10 = (uint16_t)(receivedData.humidity * 10);
+            }
             sample.pm25_atm   = receivedData.pm25;
             sample.co2_ppm    = receivedData.co2;
             sample.voc_raw    = receivedData.voc;
+            sample.voc_avg_x10 = receivedData.voc * 10;
+            sample.ok_pms = receivedData.pm25 >= 0;
+            sample.ok_co2 = receivedData.co2 != 0xFFFF;
 
             // Gọi "bộ não" tính toán của Đôn để phân tích trạng thái IAQ
             // newState chứa toàn bộ quyết định: bật máy lọc nào, đèn đỏ nào sáng

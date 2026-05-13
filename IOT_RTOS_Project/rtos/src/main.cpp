@@ -1,10 +1,28 @@
 #include <Arduino.h>
+#include <HardwareSerial.h>
+#include <Wire.h>
 #include "global.h"
 #include "tasks.h"
-#include "../hardware/main/main.ino"
+#include "board_config.h"
+#include "SensorHub.h"
+#include "IaqEvaluator.h"
+
+extern HardwareSerial PMS;
+extern HardwareSerial RS485;
+extern SensorHub g_hub;
+extern IaqEvaluator g_eval;
+
 // extern void vTaskRunAllTests(void *pvParameters);
 void setup() {
     Serial.begin(115200);
+    delay(200);
+
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+
+    g_hub.begin(PMS, PMS_RX_PIN, PMS_TX_PIN,
+                RS485, RS485_RX_PIN, RS485_TX_PIN, RS485_DERE_PIN,
+                VOC_PIN);
+    g_eval.begin(5000);
     
     // Khởi tạo tập trung tất cả tài nguyên (Queue, Mutex, Semaphore)
     init_system_resources();

@@ -6,6 +6,7 @@ REM ================================================================
 
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
+set "PIO_ENV=nodemcu_32s"
 
 echo.
 echo ================================================================
@@ -42,23 +43,23 @@ set /p CHOICE="Choose option (1-4): "
 if "%CHOICE%"=="1" (
     echo.
     echo Building firmware...
-    !PIO! run --environment esp32dev
+    !PIO! run --project-dir rtos --environment !PIO_ENV!
 ) else if "%CHOICE%"=="2" (
     echo.
     echo Connecting ESP32 and building...
     timeout /t 3 /nobreak
     echo Building and uploading...
-    !PIO! run --target upload --environment esp32dev
+    !PIO! run --project-dir rtos --target upload --environment !PIO_ENV!
 ) else if "%CHOICE%"=="3" (
     echo.
     echo Cleaning previous build...
-    !PIO! run --target clean --environment esp32dev
+    !PIO! run --project-dir rtos --target clean --environment !PIO_ENV!
     echo Building fresh...
-    !PIO! run --environment esp32dev
+    !PIO! run --project-dir rtos --environment !PIO_ENV!
 ) else if "%CHOICE%"=="4" (
     echo.
     echo Starting serial monitor (press Ctrl+C to exit)...
-    !PIO! device monitor --environment esp32dev --baud 115200
+    !PIO! device monitor --project-dir rtos --environment !PIO_ENV! --baud 115200
 ) else (
     echo Invalid choice!
     pause

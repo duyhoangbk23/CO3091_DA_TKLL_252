@@ -2,8 +2,10 @@
 #include "tasks.h"
 #include "global.h"
 #include "SnapshotStore.h"  // SensorSample and shared snapshot store
+#include "SensorHub.h"
 
 extern SnapshotStore g_store;
+extern SensorHub g_hub;
 
 void vTaskSensorRead(void *pvParameters) {
 
@@ -15,20 +17,10 @@ void vTaskSensorRead(void *pvParameters) {
         // Cho den dung chu ky tiep theo
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
 
-        // Lay snapshot da duoc hardware layer publish vao SnapshotStore
-        SensorSample hw;
-        if (!g_store.get(hw)) {
-            Serial.println("[Sensor] No sample available yet.");
-            vTaskDelay(pdMS_TO_TICKS(100));
-            continue;
-        }
+        SensorSample hw = g_hub.readSample();
+        g_store.publish(hw);
 
         // Kiem tra validity flags truoc khi xu ly
-        if (!hw.ok_sht) {
-            Serial.println("[Sensor] SHTC3 data invalid, skip.");
-            continue;
-        }
-
         // Map tu SensorSample (Don) sang SensorData_t (Danh)
         SensorData_t data;
 
@@ -36,8 +28,8 @@ void vTaskSensorRead(void *pvParameters) {
         data.device_id[sizeof(data.device_id) - 1] = '\0';
 
         // Nhiet do + do am (SHTC3, fixed-point x10 -> float)
-        data.temperature = hw.temp_c_x10 / 10.0f;
-        data.humidity    = hw.hum_rh_x10 / 10.0f;
+        data.temperature = hw.ok_sht ? hw.temp_c_x10 / 10.0f : NAN;
+        data.humidity    = hw.ok_sht ? hw.hum_rh_x10 / 10.0f : NAN;
 
         // PM2.5 + PM10 (PMS7003), -1 neu chua co du lieu
         data.pm25 = hw.ok_pms ? hw.pm25_atm : -1;
