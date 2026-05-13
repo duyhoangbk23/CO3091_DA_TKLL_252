@@ -78,14 +78,38 @@
                 </div>
             </div>
 
-            <!-- Air Quality -->
-            <div class="col-md-6 mb-4">
+            <!-- PM2.5 -->
+            <div class="col-md-6 col-lg-4 mb-4">
                 <div class="card sensor-card">
                     <div class="card-body text-center">
-                        <i class="fas fa-wind fa-3x text-success mb-3"></i>
-                        <h5 class="card-title">Air Quality</h5>
-                        <p class="sensor-value" id="air-quality-value">--</p>
-                        <p class="text-muted small">Raw ADC | Status: <span id="air-quality-status" class="badge bg-info">Reading</span></p>
+                        <i class="fas fa-smog fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">PM2.5</h5>
+                        <p class="sensor-value" id="pm25-value">--</p>
+                        <p class="text-muted small">µg/m³ | Status: <span id="pm25-status" class="badge bg-info">Reading</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CO2 -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card sensor-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-cloud fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">CO2</h5>
+                        <p class="sensor-value" id="co2-value">--</p>
+                        <p class="text-muted small">ppm | Status: <span id="co2-status" class="badge bg-info">Reading</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VOC -->
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card sensor-card">
+                    <div class="card-body text-center">
+                        <i class="fas fa-vial fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">VOC</h5>
+                        <p class="sensor-value" id="voc-value">--</p>
+                        <p class="text-muted small">ppb | Status: <span id="voc-status" class="badge bg-info">Reading</span></p>
                     </div>
                 </div>
             </div>

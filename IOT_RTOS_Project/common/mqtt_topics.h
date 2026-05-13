@@ -28,7 +28,7 @@
 #endif
 
 #ifndef MQTT_BROKER_HOST
-#define MQTT_BROKER_HOST "192.168.1.100"
+#define MQTT_BROKER_HOST "192.168.110.148"
 #endif
 
 #ifndef MQTT_BROKER_PORT

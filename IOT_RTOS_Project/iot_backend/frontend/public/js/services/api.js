@@ -4,12 +4,12 @@
  */
 
 const API_BASE_URL = window.location.protocol === 'file:'
-    ? 'http://localhost:3000/api'
+    ? 'http://localhost:3001/api'
     : '/api';
 const HEALTH_URL = window.location.protocol === 'file:'
-    ? 'http://localhost:3000/health'
+    ? 'http://localhost:3001/health'
     : '/health';
-const DEFAULT_DEVICE_ID = 'esp32_device';
+const DEFAULT_DEVICE_ID = '';
 
 /**
  * Fetch latest sensor data
