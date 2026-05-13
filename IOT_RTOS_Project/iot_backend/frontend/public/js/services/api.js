@@ -4,10 +4,10 @@
  */
 
 const API_BASE_URL = window.location.protocol === 'file:'
-    ? 'http://localhost:3001/api'
+    ? 'http://localhost:3000/api'
     : '/api';
 const HEALTH_URL = window.location.protocol === 'file:'
-    ? 'http://localhost:3001/health'
+    ? 'http://localhost:3000/health'
     : '/health';
 const DEFAULT_DEVICE_ID = '';
 

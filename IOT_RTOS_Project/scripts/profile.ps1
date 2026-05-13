@@ -9,7 +9,7 @@ function Start-IoTProject {
     .EXAMPLE
         Start-IoTProject
     #>
-    & ".\run.bat"
+    & ".\scripts\run.bat"
 }
 
 function Start-Backend {
@@ -20,7 +20,7 @@ function Start-Backend {
     .EXAMPLE
         Start-Backend
     #>
-    & ".\start-backend.bat"
+    & ".\scripts\start-backend.bat"
 }
 
 function Build-Firmware {
@@ -31,7 +31,7 @@ function Build-Firmware {
     .EXAMPLE
         Build-Firmware
     #>
-    & ".\build-firmware.bat"
+    & ".\scripts\build-firmware.bat"
 }
 
 function Monitor-ESP32 {

@@ -5,7 +5,7 @@ REM  Build ESP32 Firmware Script
 REM ================================================================
 
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 set "PIO_ENV=nodemcu_32s"
 
 echo.

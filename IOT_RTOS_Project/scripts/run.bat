@@ -6,7 +6,7 @@ REM  Chạy toàn bộ project: Hardware, Backend, Frontend, mở Website
 REM ================================================================
 
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 REM ================================================================
 REM COLORS AND FORMATTING
@@ -76,11 +76,11 @@ if not exist "iot_backend\backend\node_modules" (
     call npm install
     if !errorlevel! neq 0 (
         echo %RED%[ERROR] Failed to install npm dependencies%RESET%
-        cd /d "%~dp0"
+        cd /d "%~dp0\.."
         pause
         exit /b 1
     )
-    cd /d "%~dp0"
+    cd /d "%~dp0\.."
 )
 echo %GREEN%✓ Backend dependencies ready%RESET%
 echo.
@@ -143,7 +143,7 @@ REM Wait for server to start
 echo Waiting for server to start (5 seconds)...
 timeout /t 5 /nobreak
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 echo %GREEN%✓ Backend server started%RESET%
 echo.
 
@@ -153,7 +153,7 @@ REM ================================================================
 echo %YELLOW%[5/5] Opening frontend...%RESET%
 echo.
 
-set "FRONTEND_URL=http://localhost:3001"
+set "FRONTEND_URL=http://localhost:8080"
 echo Opening %FRONTEND_URL%...
 
 REM Try different browsers
@@ -179,10 +179,10 @@ echo ================================================================
 echo   All systems started!
 echo ================================================================
 echo.
-echo %GREEN%✓ Backend Server:%RESET%    http://localhost:3001
-echo %GREEN%✓ Dashboard:%RESET%         http://localhost:3001/public/index.html
-echo %GREEN%✓ Analytics:%RESET%         http://localhost:3001/public/analytics.html
-echo %GREEN%✓ Control Panel:%RESET%     http://localhost:3001/public/control.html
+echo %GREEN%✓ Backend Server:%RESET%    http://localhost:3000
+echo %GREEN%✓ Dashboard:%RESET%         http://localhost:8080
+echo %GREEN%✓ Analytics:%RESET%         http://localhost:8080/analytics.html
+echo %GREEN%✓ Control Panel:%RESET%     http://localhost:8080/control.html
 echo.
 
 echo %YELLOW%[Next Steps]%RESET%
@@ -191,7 +191,7 @@ echo 1. Connect ESP32 to USB port
 echo 2. Configure WiFi credentials in hardware/main/main.ino:
 echo    - Update WIFI_SSID and WIFI_PASS
 echo 3. Build and upload firmware:
-echo    - Use: build-firmware.bat
+echo    - Use: scripts\build-firmware.bat
 echo    - Or: platformio run --target upload --environment esp32dev
 echo 4. Check Serial Monitor (115200 baud) for connection status
 echo.

@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'  # No Color
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo ""
@@ -131,7 +131,7 @@ echo ""
 echo -e "${YELLOW}[5/5] Opening frontend...${NC}"
 echo ""
 
-FRONTEND_URL="http://localhost:3001"
+FRONTEND_URL="http://localhost:8080"
 
 # Detect OS and open browser
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -157,16 +157,16 @@ echo "   All systems started!"
 echo "================================================================"
 echo ""
 echo -e "${GREEN}✓ Backend Server:${NC}   $FRONTEND_URL"
-echo -e "${GREEN}✓ Dashboard:${NC}        $FRONTEND_URL/public/index.html"
-echo -e "${GREEN}✓ Analytics:${NC}        $FRONTEND_URL/public/analytics.html"
-echo -e "${GREEN}✓ Control Panel:${NC}    $FRONTEND_URL/public/control.html"
+echo -e "${GREEN}✓ Dashboard:${NC}        $FRONTEND_URL"
+echo -e "${GREEN}✓ Analytics:${NC}        $FRONTEND_URL/analytics.html"
+echo -e "${GREEN}✓ Control Panel:${NC}    $FRONTEND_URL/control.html"
 echo ""
 
 echo -e "${YELLOW}[Next Steps]${NC}"
 echo ""
 echo "1. Connect ESP32 to USB port"
 echo "2. Configure WiFi in hardware/main/main.ino"
-echo "3. Build and upload: ./build-firmware.sh"
+echo "3. Build and upload: scripts/build-firmware.bat or npm run upload"
 echo "4. Check Serial Monitor: platformio device monitor"
 echo ""
 

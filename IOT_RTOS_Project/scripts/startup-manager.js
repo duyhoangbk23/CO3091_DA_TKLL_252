@@ -27,8 +27,9 @@ const readline = require('readline');
 // ================================================================
 
 const CONFIG = {
-  backendPort: process.env.PORT || 3001,
-  backendDir: path.join(__dirname, 'iot_backend', 'backend'),
+  projectRoot: path.resolve(__dirname, '..'),
+  backendPort: process.env.PORT || 3000,
+  backendDir: path.join(__dirname, '..', 'iot_backend', 'backend'),
   frontendUrl: null, // Will be set based on port
   skipBuild: process.argv.includes('--no-build'),
   backendOnly: process.argv.includes('--backend-only'),
@@ -87,6 +88,7 @@ class Logger {
 }
 
 const logger = new Logger(CONFIG.quiet);
+CONFIG.colors = logger.colors;
 
 // ================================================================
 // Helper Functions
@@ -161,9 +163,9 @@ async function printInfo() {
   console.log('='.repeat(60));
   console.log();
   console.log(`${CONFIG.colors.green}✓ Backend${CONFIG.colors.reset}:     ${CONFIG.frontendUrl}`);
-  console.log(`${CONFIG.colors.green}✓ Dashboard${CONFIG.colors.reset}:    ${CONFIG.frontendUrl}/public/index.html`);
-  console.log(`${CONFIG.colors.green}✓ Analytics${CONFIG.colors.reset}:    ${CONFIG.frontendUrl}/public/analytics.html`);
-  console.log(`${CONFIG.colors.green}✓ Control${CONFIG.colors.reset}:      ${CONFIG.frontendUrl}/public/control.html`);
+    console.log(`${CONFIG.colors.green}Dashboard${CONFIG.colors.reset}:    http://localhost:8080`);
+    console.log(`${CONFIG.colors.green}Analytics${CONFIG.colors.reset}:    http://localhost:8080/analytics.html`);
+    console.log(`${CONFIG.colors.green}Control${CONFIG.colors.reset}:      http://localhost:8080/control.html`);
   console.log();
   console.log(`${CONFIG.colors.yellow}[Next Steps]${CONFIG.colors.reset}`);
   console.log();
@@ -261,7 +263,7 @@ Usage: node startup-manager.js [options]
 Options:
   --backend-only    Start only backend (no browser)
   --no-build        Skip firmware build check
-  --port 3000       Custom backend port (default: 3001)
+  --port 3000       Custom backend port (default: 3000)
   --quiet           Suppress log output
   --help            Show this help message
 

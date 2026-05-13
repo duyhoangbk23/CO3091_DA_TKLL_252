@@ -313,7 +313,7 @@ docker-compose exec mysql mysql -u iot_user -piot_password iot_db \
    ```
 
 2. **Enable MQTT authentication**
-   - Edit `mosquitto.conf`
+   - Edit `docker/config/mosquitto.conf`
    - Add authentication credentials
 
 3. **Use HTTPS**

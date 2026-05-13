@@ -5,7 +5,7 @@ REM  Start Backend Server Only
 REM ================================================================
 
 setlocal enabledelayedexpansion
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo.
 echo ================================================================
@@ -46,8 +46,8 @@ if not exist ".env" (
 
 echo.
 echo Starting Node.js backend...
-echo Port: 3001
-echo Frontend: http://localhost:3001
+echo Port: 3000
+echo Frontend: http://localhost:8080
 echo.
 echo Press Ctrl+C to stop the server
 echo.

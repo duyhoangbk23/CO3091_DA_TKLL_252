@@ -31,7 +31,7 @@ services:
       - "${MQTT_PORT:-1883}:1883"
       - "9001:9001"  # WebSocket port
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./docker/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto_data:/mosquitto/data
       - mosquitto_logs:/mosquitto/log
     networks:
@@ -84,7 +84,7 @@ services:
       - "${FRONTEND_PORT:-8080}:80"
     volumes:
       - ./IOT_RTOS_Project/iot_backend/frontend/public:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/config/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - backend
     networks:

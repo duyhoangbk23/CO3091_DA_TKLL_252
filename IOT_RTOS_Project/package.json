@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "description": "IoT RTOS Project - ESP32 + Node.js Backend + Dashboard",
   "private": true,
-  "main": "startup-manager.js",
+  "main": "scripts/startup-manager.js",
   "scripts": {
-    "start": "node startup-manager.js",
-    "start:backend-only": "node startup-manager.js --backend-only",
-    "backend": "node startup-manager.js --backend-only",
+    "start": "node scripts/startup-manager.js",
+    "start:backend-only": "node scripts/startup-manager.js --backend-only",
+    "backend": "node scripts/startup-manager.js --backend-only",
     "backend:dev": "cd iot_backend/backend && npm run dev",
     "backend:start": "cd iot_backend/backend && npm start",
     "backend:test": "cd iot_backend/backend && npm test",
     "backend:install": "cd iot_backend/backend && npm install",
-    "frontend:open": "start http://localhost:3001",
-    "build": "echo 'Use build-firmware.bat for Windows or PlatformIO CLI'",
+    "frontend:open": "start http://localhost:8080",
+    "build": "echo 'Use scripts/build-firmware.bat for Windows or PlatformIO CLI'",
     "build:firmware": "platformio run --environment esp32dev",
     "upload": "platformio run --target upload --environment esp32dev",
     "monitor": "platformio device monitor --environment esp32dev --baud 115200",
@@ -23,7 +23,7 @@
     "lint": "cd iot_backend/backend && npm run lint",
     "logs": "tail -f iot_backend/backend/logs/app.log",
     "setup": "npm run backend:install",
-    "help": "cat STARTUP_GUIDE.md"
+    "help": "node -e \"console.log('See ../docs/RUNNING_GUIDE.md')\""
   },
   "keywords": [
     "iot",

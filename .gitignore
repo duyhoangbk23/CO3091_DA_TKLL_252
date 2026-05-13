@@ -54,4 +54,6 @@ coverage/
 
 # Test
 .mocha_timeout
+test-results/
+playwright-report/
 

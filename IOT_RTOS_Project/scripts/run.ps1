@@ -42,9 +42,9 @@ $ProgressPreference = "SilentlyContinue"
 
 $config = @{
     BackendPort = $env:PORT ?? 3001
-    BackendDir  = Join-Path $PSScriptRoot "iot_backend\backend"
-    ProjectRoot = $PSScriptRoot
-    FrontendUrl = "http://localhost:$(if ($env:PORT) { $env:PORT } else { 3001 })"
+    ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+    BackendDir  = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")) "iot_backend\backend"
+    FrontendUrl = "http://localhost:$(if ($env:PORT) { $env:PORT } else { 3000 })"
 }
 
 # ================================================================
@@ -215,13 +215,13 @@ Write-Host "Backend Server:   " -NoNewline
 Write-Host "$($config.FrontendUrl)" -ForegroundColor Green
 
 Write-Host "Dashboard:        " -NoNewline
-Write-Host "$($config.FrontendUrl)/public/index.html" -ForegroundColor Green
+Write-Host "http://localhost:8080" -ForegroundColor Green
 
 Write-Host "Analytics:        " -NoNewline
-Write-Host "$($config.FrontendUrl)/public/analytics.html" -ForegroundColor Green
+Write-Host "http://localhost:8080/analytics.html" -ForegroundColor Green
 
 Write-Host "Control Panel:    " -NoNewline
-Write-Host "$($config.FrontendUrl)/public/control.html" -ForegroundColor Green
+Write-Host "http://localhost:8080/control.html" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Yellow
