@@ -53,6 +53,9 @@ async function handleNewSensorData(data) {
             device_id: latestData.device_id,
             temperature: latestData.temperature,
             humidity: latestData.humidity,
+            pm25: latestData.pm25,
+            co2: latestData.co2,
+            voc: latestData.voc,
             air_quality: latestData.air_quality,
             alert_level: latestData.alert_level,
             timestamp_ms: latestData.timestamp_ms

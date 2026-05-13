@@ -7,7 +7,7 @@ const logger = require('../logger/winston');
 
 /**
  * Insert sensor data into database
- * @param {object} data - { device_id, temperature, humidity, air_quality, alert_level, timestamp_ms }
+ * @param {object} data - { device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp_ms }
  * @returns {Promise<boolean>} Success status
  */
 async function insertSensorData(data) {
@@ -18,15 +18,25 @@ async function insertSensorData(data) {
     }
 
     try {
+        const pm25 = data.pm25 !== undefined && data.pm25 !== null ? parseInt(data.pm25, 10) : -1;
+        const co2 = data.co2 !== undefined && data.co2 !== null ? parseInt(data.co2, 10) : -1;
+        const voc = data.voc !== undefined && data.voc !== null ? parseInt(data.voc, 10) : -1;
+        const airQ = data.air_quality !== undefined && data.air_quality !== null
+            ? parseInt(data.air_quality, 10)
+            : (Number.isFinite(pm25) && pm25 >= 0 ? pm25 : 0);
+
         const query = `
-            INSERT INTO sensor_data (device_id, temperature, humidity, air_quality, alert_level, timestamp)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sensor_data (device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const values = [
             data.device_id,
             data.temperature,
             data.humidity,
-            data.air_quality || 0,
+            Number.isNaN(pm25) ? -1 : pm25,
+            Number.isNaN(co2) ? -1 : co2,
+            Number.isNaN(voc) ? -1 : voc,
+            Number.isNaN(airQ) ? 0 : airQ,
             data.alert_level || 0,
             data.timestamp_ms ?? data.timestamp ?? Date.now()
         ];
@@ -54,7 +64,8 @@ async function getHistoricalData(limit = 100, hours = 24) {
 
     try {
         const query = `
-            SELECT id, device_id, temperature, humidity, air_quality, alert_level, timestamp AS timestamp_ms, created_at
+            SELECT id, device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level,
+                   timestamp AS timestamp_ms, created_at
             FROM sensor_data
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
             ORDER BY created_at DESC
@@ -91,6 +102,15 @@ async function getStatistics(hours = 24) {
                 AVG(humidity) as avg_humidity,
                 MAX(humidity) as max_humidity,
                 MIN(humidity) as min_humidity,
+                AVG(pm25) as avg_pm25,
+                MAX(pm25) as max_pm25,
+                MIN(pm25) as min_pm25,
+                AVG(co2) as avg_co2,
+                MAX(co2) as max_co2,
+                MIN(co2) as min_co2,
+                AVG(voc) as avg_voc,
+                MAX(voc) as max_voc,
+                MIN(voc) as min_voc,
                 AVG(air_quality) as avg_air_quality,
                 MAX(air_quality) as max_air_quality,
                 MIN(air_quality) as min_air_quality,

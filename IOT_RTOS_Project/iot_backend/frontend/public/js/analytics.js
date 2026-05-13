@@ -140,12 +140,18 @@ function updateDataTable(data) {
 
     sortedData.forEach(row => {
         const tr = document.createElement('tr');
+        const pm = row.pm25 != null && row.pm25 !== -1 ? row.pm25 : (row.air_quality ?? '');
+        const co2v = row.co2 != null && row.co2 !== 65535 && row.co2 !== -1 ? row.co2 : (row.co2 === 65535 ? '—' : row.co2 ?? '');
+        const vocv = row.voc != null && row.voc !== -1 ? row.voc : '';
         tr.innerHTML = `
             <td>${formatTimestamp(row.created_at)}</td>
             <td>${row.device_id}</td>
             <td><strong>${formatValue(row.temperature, 1)} C</strong></td>
             <td><strong>${formatValue(row.humidity, 1)}% RH</strong></td>
-            <td>${row.air_quality ?? 0}</td>
+            <td>${pm}</td>
+            <td>${co2v}</td>
+            <td>${vocv}</td>
+            <td>${row.air_quality ?? ''}</td>
             <td>${row.alert_level ?? 0}</td>
         `;
         tbody.appendChild(tr);
@@ -158,11 +164,12 @@ function exportToCsv() {
         return;
     }
 
-    let csv = 'Timestamp,Device ID,Temperature (C),Humidity (% RH),Air Quality,Alert Level,Device Timestamp (ms)\n';
+    let csv = 'Timestamp,Device ID,Temperature (C),Humidity (% RH),PM2.5,CO2,VOC,Air Quality (legacy),Alert Level,Device Timestamp\n';
 
     allData.forEach(row => {
         const timestamp = formatTimestamp(row.created_at);
-        csv += `"${timestamp}","${row.device_id}",${row.temperature},${row.humidity},${row.air_quality ?? 0},${row.alert_level ?? 0},${row.timestamp_ms ?? ''}\n`;
+        const pm = row.pm25 != null ? row.pm25 : (row.air_quality ?? '');
+        csv += `"${timestamp}","${row.device_id}",${row.temperature},${row.humidity},${pm},${row.co2 ?? ''},${row.voc ?? ''},${row.air_quality ?? ''},${row.alert_level ?? 0},${row.timestamp_ms ?? ''}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });

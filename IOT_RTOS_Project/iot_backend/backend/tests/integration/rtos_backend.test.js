@@ -75,7 +75,7 @@ beforeEach(() => {
     _published.length = 0;
     setDb(null);
     setMqtt(null);
-    setLatestData({ device_id: 'esp32_device', temperature: 0, humidity: 0, air_quality: 0, alert_level: 0, timestamp_ms: 0 });
+    setLatestData({ device_id: 'esp32_device', temperature: 0, humidity: 0, pm25: 0, co2: 0, voc: 0, air_quality: 0, alert_level: 0, timestamp_ms: 0 });
 });
 
 // ================================================================
@@ -120,14 +120,15 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
 
         dataCallback = async data => {
             setLatestData(data);
-            // Server.js se goi saveSensorData — mo phong o day
             await mockDb.query(
-                'INSERT INTO sensor_data (device_id, temperature, humidity, air_quality, alert_level, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-                [data.device_id, data.temperature, data.humidity, data.air_quality, data.alert_level, data.timestamp_ms]
+                `INSERT INTO sensor_data (
+                    device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.air_quality, data.alert_level, data.timestamp_ms]
             );
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('sensor_data'),
-                ['esp32_device', 25.5, 60.0, 250, 0, 3000]
+                ['esp32_device', 25.5, 60.0, 250, 0, 0, 250, 0, 3000]
             );
             done();
         };
@@ -263,8 +264,10 @@ describe('Canh bao nguong — Mirror RTOS threshold logic', () => {
             expect(data.humidity).toBe(55.0);
 
             await mockDb.query(
-                'INSERT INTO sensor_data (device_id, temperature, humidity, air_quality, alert_level, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-                [data.device_id, data.temperature, data.humidity, data.air_quality, data.alert_level, data.timestamp_ms]
+                `INSERT INTO sensor_data (
+                    device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.air_quality, data.alert_level, data.timestamp_ms]
             );
             expect(mockDb.query).toHaveBeenCalled();
             done();
