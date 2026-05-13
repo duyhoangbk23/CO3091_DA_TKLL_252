@@ -40,12 +40,68 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <p><strong>Device ID:</strong> <span id="device-id">esp32_sensor_001</span></p>
-                                <p><strong>Status:</strong> <span class="badge bg-success">Online</span></p>
+                                <p><strong>Status:</strong> <span id="device-status" class="badge bg-success">Online</span></p>
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Last Update:</strong> <span id="last-update">-</span></p>
                                 <p><strong>Command Queue:</strong> <span class="badge bg-info" id="queue-count">0</span></p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Sensor Readings -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-chart-area"></i> Live Sensor Readings
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Sensor</th>
+                                        <th>Value</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Temperature</td>
+                                        <td id="sensor-temp">--</td>
+                                        <td id="sensor-temp-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Humidity</td>
+                                        <td id="sensor-humidity">--</td>
+                                        <td id="sensor-humidity-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>PM2.5</td>
+                                        <td id="sensor-pm25">--</td>
+                                        <td id="sensor-pm25-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>CO2</td>
+                                        <td id="sensor-co2">--</td>
+                                        <td id="sensor-co2-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>VOC</td>
+                                        <td id="sensor-voc">--</td>
+                                        <td id="sensor-voc-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Alert Level</td>
+                                        <td id="sensor-alert-level">--</td>
+                                        <td>-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -73,9 +129,14 @@
                             <div class="mb-3">
                                 <label for="command-select" class="form-label">Command</label>
                                 <select id="command-select" class="form-select" required>
-                                    <option value="ON">Turn LED ON</option>
-                                    <option value="OFF">Turn LED OFF</option>
-
+<option value="LED_ON">Turn LED ON</option>
+                                <option value="LED_OFF">Turn LED OFF</option>
+                                <option value="HEPA_ON">Turn HEPA ON</option>
+                                <option value="HEPA_OFF">Turn HEPA OFF</option>
+                                <option value="VENT_ON">Turn Vent ON</option>
+                                <option value="VENT_OFF">Turn Vent OFF</option>
+                                <option value="GET_STATUS">Get Device Status</option>
+                                <option value="REBOOT">Reboot Device</option>
                                 </select>
                             </div>
 
@@ -161,7 +222,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="saveSettings()">
+                        <button class="btn btn-primary" onclick="saveSettings(event)">
                             <i class="fas fa-save"></i> Save Settings
                         </button>
                     </div>

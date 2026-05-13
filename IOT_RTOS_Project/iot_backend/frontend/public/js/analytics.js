@@ -5,6 +5,9 @@
 
 let temperatureChart = null;
 let humidityChart = null;
+let pm25Chart = null;
+let co2Chart = null;
+let vocChart = null;
 let allData = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -74,6 +77,95 @@ function initializeCharts() {
             }
         }
     });
+
+    const pm25Ctx = document.getElementById('pm25-chart').getContext('2d');
+    const co2Ctx = document.getElementById('co2-chart').getContext('2d');
+    const vocCtx = document.getElementById('voc-chart').getContext('2d');
+
+    pm25Chart = new Chart(pm25Ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'PM2.5 (µg/m³)',
+                data: [],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'µg/m³' }
+                }
+            }
+        }
+    });
+
+    co2Chart = new Chart(co2Ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'CO₂ (ppm)',
+                data: [],
+                borderColor: '#6c757d',
+                backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 400,
+                    title: { display: true, text: 'ppm' }
+                }
+            }
+        }
+    });
+
+    vocChart = new Chart(vocCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'VOC (ppb)',
+                data: [],
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'ppb' }
+                }
+            }
+        }
+    });
 }
 
 async function loadHistory() {
@@ -100,17 +192,26 @@ function updateStatistics(data) {
 
     const temperatures = data.map(d => d.temperature);
     const humidities = data.map(d => d.humidity);
+    const pm25s = data.filter(d => d.pm25 != null && d.pm25 !== -1).map(d => d.pm25);
+    const co2s = data.filter(d => d.co2 != null && d.co2 !== 65535 && d.co2 !== -1).map(d => d.co2);
+    const vocs = data.filter(d => d.voc != null && d.voc !== -1).map(d => d.voc);
 
     const avgTemp = (temperatures.reduce((a, b) => a + b, 0) / temperatures.length).toFixed(1);
     const avgHumidity = (humidities.reduce((a, b) => a + b, 0) / humidities.length).toFixed(1);
+    const avgPm25 = pm25s.length > 0 ? (pm25s.reduce((a, b) => a + b, 0) / pm25s.length).toFixed(1) : '-';
+    const avgCo2 = co2s.length > 0 ? (co2s.reduce((a, b) => a + b, 0) / co2s.length).toFixed(0) : '-';
+    const avgVoc = vocs.length > 0 ? (vocs.reduce((a, b) => a + b, 0) / vocs.length).toFixed(0) : '-';
 
     document.getElementById('stat-avg-temp').textContent = avgTemp;
     document.getElementById('stat-avg-humidity').textContent = avgHumidity;
+    document.getElementById('stat-avg-pm25').textContent = avgPm25;
+    document.getElementById('stat-avg-co2').textContent = avgCo2;
+    document.getElementById('stat-avg-voc').textContent = avgVoc;
     document.getElementById('stat-records').textContent = data.length;
 }
 
 function updateCharts(data) {
-    if (!temperatureChart || !humidityChart) return;
+    if (!temperatureChart || !humidityChart || !pm25Chart || !co2Chart || !vocChart) return;
 
     const sortedData = [...data].sort((a, b) =>
         new Date(a.created_at) - new Date(b.created_at)
@@ -128,6 +229,18 @@ function updateCharts(data) {
     humidityChart.data.labels = labels;
     humidityChart.data.datasets[0].data = sortedData.map(d => d.humidity);
     humidityChart.update();
+
+    pm25Chart.data.labels = labels;
+    pm25Chart.data.datasets[0].data = sortedData.map(d => d.pm25 != null && d.pm25 !== -1 ? d.pm25 : null);
+    pm25Chart.update();
+
+    co2Chart.data.labels = labels;
+    co2Chart.data.datasets[0].data = sortedData.map(d => d.co2 != null && d.co2 !== 65535 && d.co2 !== -1 ? d.co2 : null);
+    co2Chart.update();
+
+    vocChart.data.labels = labels;
+    vocChart.data.datasets[0].data = sortedData.map(d => d.voc != null && d.voc !== -1 ? d.voc : null);
+    vocChart.update();
 }
 
 function updateDataTable(data) {

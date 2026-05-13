@@ -101,6 +101,37 @@
             </div>
         </div>
 
+        <!-- Additional Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Avg PM2.5</h6>
+                        <p class="h4 text-warning" id="stat-avg-pm25">-</p>
+                        <small class="text-muted">µg/m³</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Avg CO₂</h6>
+                        <p class="h4 text-secondary" id="stat-avg-co2">-</p>
+                        <small class="text-muted">ppm</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">Avg VOC</h6>
+                        <p class="h4 text-primary" id="stat-avg-voc">-</p>
+                        <small class="text-muted">ppb</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Charts -->
         <div class="row mb-4">
             <div class="col-md-6">
@@ -120,6 +151,40 @@
                     </div>
                     <div class="card-body">
                         <canvas id="humidity-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Charts -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-warning text-white">
+                        <i class="fas fa-smog"></i> PM2.5 Trend
+                    </div>
+                    <div class="card-body">
+                        <canvas id="pm25-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-cloud"></i> CO₂ Trend
+                    </div>
+                    <div class="card-body">
+                        <canvas id="co2-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-flask"></i> VOC Trend
+                    </div>
+                    <div class="card-body">
+                        <canvas id="voc-chart"></canvas>
                     </div>
                 </div>
             </div>

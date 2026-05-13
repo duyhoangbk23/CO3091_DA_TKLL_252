@@ -5,6 +5,8 @@
 
 let commandHistory = [];
 const MAX_HISTORY_ITEMS = 20;
+let sensorRefreshInterval = null;
+let historyRefreshInterval = null;
 
 /**
  * Initialize control page
@@ -13,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Control page initialized');
     updateFooterTime();
     setupEventListeners();
+    loadSensorData();
+    loadControlHistory();
+
+    sensorRefreshInterval = setInterval(loadSensorData, 2000);
+    historyRefreshInterval = setInterval(loadControlHistory, 5000);
     setInterval(updateFooterTime, 1000);
 });
 
@@ -187,9 +194,69 @@ function clearHistory() {
 }
 
 /**
+ * Load latest sensor data from backend
+ */
+async function loadSensorData() {
+    const data = await fetchLatestData();
+    if (!data) return;
+
+    document.getElementById('last-update').textContent = formatTimestamp(data.received_at || data.timestamp);
+    document.getElementById('device-id').textContent = data.device_id || 'esp32_sensor_001';
+    document.getElementById('device-status').textContent = data.status || 'unknown';
+    document.getElementById('device-status').className = data.status === 'online' ? 'badge bg-success' : 'badge bg-danger';
+
+    updateSensorSection(data);
+}
+
+function updateSensorSection(data) {
+    const tempValue = formatValue(data.temperature, 1);
+    const humidityValue = formatValue(data.humidity, 1);
+    const pm25Value = Number.parseInt(data.pm25, 10) || 0;
+    const co2Value = Number.parseInt(data.co2, 10) || 0;
+    const vocValue = Number.parseInt(data.voc, 10) || 0;
+    const alertLevelValue = Number.parseInt(data.alert_level, 10) || 0;
+
+    document.getElementById('sensor-temp').textContent = `${tempValue} °C`;
+    document.getElementById('sensor-humidity').textContent = `${humidityValue} %`;
+    document.getElementById('sensor-pm25').textContent = `${pm25Value} µg/m³`;
+    document.getElementById('sensor-co2').textContent = `${co2Value} ppm`;
+    document.getElementById('sensor-voc').textContent = `${vocValue} ppb`;
+    document.getElementById('sensor-alert-level').textContent = alertLevelValue;
+
+    document.getElementById('sensor-temp-status').textContent = getTempStatus(data.temperature);
+    document.getElementById('sensor-humidity-status').textContent = getHumidityStatus(data.humidity);
+    document.getElementById('sensor-pm25-status').textContent = getPm25Status(pm25Value);
+    document.getElementById('sensor-co2-status').textContent = getCo2Status(co2Value);
+    document.getElementById('sensor-voc-status').textContent = getVocStatus(vocValue);
+}
+
+/**
+ * Load control history from backend
+ */
+async function loadControlHistory(limit = 20) {
+    const history = await fetchControlHistory(limit);
+    if (!history || history.length === 0) {
+        if (commandHistory.length === 0) {
+            updateHistoryDisplay();
+        }
+        return;
+    }
+
+    commandHistory = history.map(item => ({
+        timestamp: formatTimestamp(item.created_at),
+        deviceId: item.device_id,
+        command: item.command,
+        status: item.status === 'sent' ? 'success' : 'error',
+        message: item.status === 'sent' ? 'Sent to device' : 'Failed'
+    }));
+
+    updateHistoryDisplay();
+}
+
+/**
  * Save settings to localStorage
  */
-function saveSettings() {
+function saveSettings(event) {
     const samplingRate = document.getElementById('sampling-rate').value;
     const alertTemp = document.getElementById('alert-temp').value;
     const alertHumidity = document.getElementById('alert-humidity').value;
@@ -202,13 +269,14 @@ function saveSettings() {
 
     localStorage.setItem('iotSettings', JSON.stringify(settings));
     
-    // Show confirmation
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
-    setTimeout(() => {
-        btn.innerHTML = originalText;
-    }, 2000);
+    const btn = event?.target || document.querySelector('button[onclick*="saveSettings"]');
+    if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+        }, 2000);
+    }
 }
 
 /**

@@ -179,7 +179,7 @@ echo ================================================================
 echo   All systems started!
 echo ================================================================
 echo.
-echo %GREEN%✓ Backend Server:%RESET%   http://localhost:3001
+echo %GREEN%✓ Backend Server:%RESET%    http://localhost:3001
 echo %GREEN%✓ Dashboard:%RESET%         http://localhost:3001/public/index.html
 echo %GREEN%✓ Analytics:%RESET%         http://localhost:3001/public/analytics.html
 echo %GREEN%✓ Control Panel:%RESET%     http://localhost:3001/public/control.html

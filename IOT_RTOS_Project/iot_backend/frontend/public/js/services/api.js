@@ -102,6 +102,23 @@ async function fetchStatistics() {
 }
 
 /**
+ * Fetch control history
+ */
+async function fetchControlHistory(limit = 20) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/control/history?limit=${limit}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching control history:', error);
+        return [];
+    }
+}
+
+/**
  * Check server health
  */
 async function checkHealth() {
