@@ -27,6 +27,10 @@
   * Task_Control
 * Thiết kế queue
 * Gửi/nhận MQTT
+
+## Local configuration
+
+Copy `include/local_config.example.h` to `include/local_config.h` before flashing real hardware, then set WiFi, MQTT broker, and `DEVICE_ID`. `local_config.h` is ignored by git so local credentials are not committed.
 * Quản lý timing
 
 ---

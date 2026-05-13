@@ -3,6 +3,8 @@ const mqttService = require('../services/mqtt');
 const logger = require('../logger/winston');
 
 const CONTROL_COMMAND_MAP = {
+    ON: 'LED_ON',
+    OFF: 'LED_OFF',
     REBOOT: 'REBOOT',
     TEST_LED: 'TEST_LED',
     MUTE_ALARM: 'MUTE_ALARM',

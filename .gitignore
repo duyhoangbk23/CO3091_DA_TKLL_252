@@ -9,6 +9,14 @@ node_modules/
 **/.env
 **/.env.local
 **/.env.*.local
+**/local_config.h
+
+# LaTeX / report build outputs
+Report/*.aux
+Report/*.out
+Report/*.toc
+Report/*.log
+Report/*.synctex.gz
 
 # Logs
 logs/

@@ -144,7 +144,7 @@ curl http://localhost:3000/api/data
 Gửi thử lệnh điều khiển (sau khi ESP32 đã chạy và subscribe topic điều khiển):
 
 ```powershell
-curl -X POST http://localhost:3000/api/control -H "Content-Type: application/json" -d "{\"device_id\":\"esp32_sensor_001\",\"command\":\"ON\"}"
+curl -X POST http://localhost:3000/api/control -H "Content-Type: application/json" -d "{\"device_id\":\"esp32_device\",\"command\":\"ON\"}"
 ```
 
 `device_id` phải **trùng** với macro `DEVICE_ID` trên firmware (trong repo hiện gắn với `hardware/main/Pins.h`).
@@ -161,7 +161,7 @@ Trước khi build và nạp:
    - Topic giữ mặc định `iot/sensor/data`, `iot/device/control`, … trừ khi bạn đổi đồng bộ cả `data_format.json` và backend.
 
 2. **`IOT_RTOS_Project/hardware/main/Pins.h`**
-   - `DEVICE_ID` phải trùng với option trên web (ví dụ `esp32_sensor_001` trong `control.html`).
+   - `DEVICE_ID` phải trùng với option trên web (mặc định `esp32_device` trong `control.html`).
 
 3. **PlatformIO — thư mục mã nguồn firmware**
 

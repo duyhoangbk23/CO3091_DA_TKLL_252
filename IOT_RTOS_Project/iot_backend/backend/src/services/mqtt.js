@@ -1,6 +1,7 @@
 const mqtt = require('mqtt');
 const logger = require('../logger/winston');
 const { mqttTopics, mapSensorPayload } = require('../config/mqttContract');
+const { DEFAULT_DEVICE_ID } = require('../config/device');
 
 const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
 const TOPIC_DATA = process.env.MQTT_TOPIC_DATA || process.env.MQTT_TOPIC_PUBLISH || mqttTopics.sensor_data;
@@ -9,6 +10,7 @@ const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || mqttTopics.device_contro
 
 let client = null;
 let dataCallback = null;
+let latestData = null;
 
 /**
  * MQTT Service - Handles MQTT broker communication
@@ -47,6 +49,7 @@ function init(onDataReceived) {
 
             if ((topic === TOPIC_DATA || topic === TOPIC_STATUS) && dataCallback) {
                 const mappedData = mapSensorPayload(rawData);
+                latestData = mappedData;
                 dataCallback(mappedData);
             }
         } catch (error) {
@@ -70,7 +73,7 @@ function init(onDataReceived) {
  * @param {string} state - Command state (ON/OFF)
  * @returns {boolean} Success status
  */
-function publishControl(command, deviceId = 'esp32_device') {
+function publishControl(command, deviceId = DEFAULT_DEVICE_ID) {
     if (!client || !client.connected) {
         logger.error('Cannot publish: MQTT client not connected');
         return false;
@@ -97,6 +100,10 @@ function publishControl(command, deviceId = 'esp32_device') {
  */
 function isConnected() {
     return client && client.connected;
+}
+
+function getLatestData() {
+    return latestData;
 }
 
 /**
@@ -152,12 +159,16 @@ function close() {
         client.end();
         logger.info('MQTT connection closed');
     }
+    client = null;
+    dataCallback = null;
+    latestData = null;
 }
 
 module.exports = {
     init,
     publishControl,
     isConnected,
+    getLatestData,
     subscribe,
     publish,
     close

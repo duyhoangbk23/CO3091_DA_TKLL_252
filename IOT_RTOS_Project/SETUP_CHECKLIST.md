@@ -72,7 +72,7 @@ Edit `hardware/main/main.ino` (or `hardware/main/Pins.h`):
 #define WIFI_PASS "Your_WiFi_Password"
 #define MQTT_SERVER "localhost"  // or your backend IP
 #define MQTT_PORT 1883
-#define DEVICE_ID "esp32_1"
+#define DEVICE_ID "esp32_device"
 ```
 
 ### [ ] Update Backend .env (Optional)
@@ -142,7 +142,7 @@ Expected output:
 
 Expected output:
 ```
-[MQTT] Publishing: sensor_data/esp32_1
+[MQTT] Publishing: sensor_data/esp32_device
 ```
 
 Keep this window open to monitor real-time output!
@@ -204,7 +204,7 @@ curl http://localhost:3001/api/control
 # Send control command
 curl -X POST http://localhost:3001/api/control \
   -H "Content-Type: application/json" \
-  -d '{"device_id":"esp32_1","command":"ON"}'
+  -d '{"device_id":"esp32_device","command":"ON"}'
 ```
 
 ### [ ] Test Database (Optional)

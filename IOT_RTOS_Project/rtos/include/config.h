@@ -34,7 +34,7 @@
 // // Topics lay tu contract chung — KHONG dinh nghia lai o day
 // #include "../../common/mqtt_topics.h"
 
-// #define DEVICE_ID "esp32_1"  // ID dinh danh thiet bi, dong bo voi data_format.json
+// #define DEVICE_ID "esp32_device"  // ID dinh danh thiet bi, dong bo voi data_format.json
 
 // #define WIFI_SSID "Ten_Wifi"
 // #define WIFI_PASS "Mat_Khau_Wifi"

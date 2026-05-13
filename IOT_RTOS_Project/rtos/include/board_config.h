@@ -3,7 +3,13 @@
 
 #include <Arduino.h>
 
+#if __has_include("local_config.h")
+#include "local_config.h"
+#endif
+
+#ifndef DEVICE_ID
 #define DEVICE_ID "esp32_device"
+#endif
 
 static constexpr int PMS_RX_PIN = 26;
 static constexpr int PMS_TX_PIN = 27;

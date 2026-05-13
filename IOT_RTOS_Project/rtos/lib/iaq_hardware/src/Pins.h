@@ -5,7 +5,7 @@
 // [Chưa xác minh] Mình không thể chọn pin thay bạn vì còn phụ thuộc wiring và các pin đang dùng UART/ADC.
 // Set các macro dưới đây theo phần cứng của bạn.
 #ifndef DEVICE_ID
-#define DEVICE_ID "esp32_sensor_001"
+#define DEVICE_ID "esp32_device"
 #endif
 // LED xanh (thiết bị)
 #ifndef LED_HEPA_G

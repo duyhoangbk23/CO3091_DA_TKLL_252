@@ -6,6 +6,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+const { DEFAULT_DEVICE_ID } = require('./config/device');
 
 const app = express();
 app.use(cors());
@@ -14,7 +15,7 @@ app.use(express.json());
 // ==================== IN-MEMORY STATE ====================
 // latestData duoc export de test co the ghi de
 let latestData = {
-    device_id:   'esp32_device',
+    device_id:   DEFAULT_DEVICE_ID,
     temperature: 0,
     humidity:    0,
     pm25:        0,
@@ -100,7 +101,13 @@ app.post('/api/control', async (req, res) => {
     }
 
     const normalizedCommand = command.toUpperCase();
+    const mqttCommand = normalizedCommand === 'ON'
+        ? 'LED_ON'
+        : normalizedCommand === 'OFF'
+            ? 'LED_OFF'
+            : normalizedCommand;
     const supportedCommands = new Set([
+        'ON', 'OFF',
         'REBOOT', 'TEST_LED', 'MUTE_ALARM', 'GET_STATUS',
         'LED_ON', 'LED_OFF',
         'HEPA_ON', 'HEPA_OFF',
@@ -120,21 +127,21 @@ app.post('/api/control', async (req, res) => {
     }
 
     try {
-        if (!mqttClient || !mqttClient.publishControl(normalizedCommand, device_id)) {
+        if (!mqttClient || !mqttClient.publishControl(mqttCommand, device_id)) {
             throw new Error('MQTT client not connected');
         }
 
         if (db) {
             await db.query(
                 'INSERT INTO control_log (device_id, command, status) VALUES (?, ?, ?)',
-                [device_id, normalizedCommand, 'sent']
+                [device_id, mqttCommand, 'sent']
             );
         }
 
         res.json({
             success: true,
-            message: `Control "${normalizedCommand}" sent to device "${device_id}"`,
-            result: { device_id, command: normalizedCommand, mqtt_command: normalizedCommand, status: 'sent', timestamp: new Date().toISOString() }
+            message: `Control "${mqttCommand}" sent to device "${device_id}"`,
+            result: { device_id, command: mqttCommand, mqtt_command: mqttCommand, status: 'sent', timestamp: new Date().toISOString() }
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Failed to send control: ' + err.message });

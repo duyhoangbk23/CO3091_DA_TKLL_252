@@ -6,6 +6,7 @@
 //#include "config.h"
 #include "mqtt_topics.h" // Topic + broker contract chung với backend (data_format.json)
 #include "Pins.h"        // DEVICE_ID — khớp device_id khi gọi POST /api/control
+#include "MqttCommand.h"
 
 void connectWiFi() {
     if (WiFi.status() == WL_CONNECTED) return;
@@ -32,25 +33,6 @@ void connectWiFi() {
 }
  
 // Hàm chuẩn hóa lệnh điều khiển từ Backend
-static void normalizeControlPayload(byte* payload, unsigned int length, char* cmd, size_t cmdSize) {
-    char raw[128] = {0};
-    int len = (length >= sizeof(raw)) ? sizeof(raw) - 1 : length;
-    memcpy(raw, payload, len);
- 
-    StaticJsonDocument<128> doc;
-    DeserializationError error = deserializeJson(doc, raw);
-    
-    if (!error) {
-        const char* jsonCmd = doc["command"] | "";
-        if (strlen(jsonCmd) > 0) {
-            strncpy(cmd, jsonCmd, cmdSize - 1);
-            return;
-        }
-    }
-    
-    strncpy(cmd, raw, cmdSize - 1);
-}
- 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     char cmd[20] = {0};
     normalizeControlPayload(payload, length, cmd, sizeof(cmd));

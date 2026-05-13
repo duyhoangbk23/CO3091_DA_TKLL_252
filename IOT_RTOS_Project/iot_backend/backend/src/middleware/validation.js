@@ -50,6 +50,7 @@ const schemas = {
     controlCommand: Joi.object({
         device_id: Joi.string().required(),
         command: Joi.string().uppercase().valid(
+            'ON', 'OFF',
             'REBOOT', 'TEST_LED', 'MUTE_ALARM', 'GET_STATUS',
             'LED_ON', 'LED_OFF',
             'HEPA_ON', 'HEPA_OFF',

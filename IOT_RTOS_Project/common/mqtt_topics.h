@@ -11,11 +11,33 @@
 //  Backend Node đọc JSON đó (src/config/mqttContract.js)
 //  KHONG doi topic ma chua cap nhat data_format.json
 // ============================================================
-#define WIFI_SSID "Z Robotics"
-#define WIFI_PASS "28102023"
+#if __has_include("local_config.h")
+#include "local_config.h"
+#endif
+
+#ifndef WIFI_SSID
+#define WIFI_SSID "YOUR_WIFI_SSID"
+#endif
+
+#if defined(WIFI_PASSWORD) && !defined(WIFI_PASS)
+#define WIFI_PASS WIFI_PASSWORD
+#endif
+
+#ifndef WIFI_PASS
+#define WIFI_PASS "YOUR_WIFI_PASSWORD"
+#endif
+
+#ifndef MQTT_BROKER_HOST
+#define MQTT_BROKER_HOST "192.168.1.100"
+#endif
+
+#ifndef MQTT_BROKER_PORT
+#define MQTT_BROKER_PORT 1883
+#endif
+
 /* IP/hostname broker — phải trùng MQTT_BROKER mà backend dùng (ESP32 không resolve được "localhost"). */
-#define MQTT_SERVER "192.168.110.154"
-#define MQTT_PORT   1883
+#define MQTT_SERVER MQTT_BROKER_HOST
+#define MQTT_PORT   MQTT_BROKER_PORT
 // ESP32 → Backend: du lieu cam bien dinh ky 10s
 #define MQTT_TOPIC_SENSOR_DATA    "iot/sensor/data"
 

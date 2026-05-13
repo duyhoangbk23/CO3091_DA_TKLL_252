@@ -2,7 +2,7 @@
  * tests/integration/rtos_backend.test.js
  *
  * Integration test mo phong luong du lieu E2E:
- *   ESP32 (RTOS) --> MQTT Broker (gia lap) --> mqttClient --> app --> API
+ *   ESP32 (RTOS) --> MQTT Broker (gia lap) --> mqtt service --> app --> API
  */
 
 // ================================================================
@@ -40,7 +40,7 @@ beforeEach(() => {
 // ================================================================
 const request    = require('supertest');
 const { app, setDb, setMqtt, setLatestData, getLatestData } = require('../../src/app');
-const mqttMod    = require('../../src/mqtt/mqttClient');
+const mqttMod    = require('../../src/services/mqtt');
 
 // ================================================================
 //  Helpers

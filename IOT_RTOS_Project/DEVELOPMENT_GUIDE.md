@@ -128,7 +128,7 @@ GET http://localhost:3000/api/data
 {
   "success": true,
   "data": {
-    "device_id": "esp32_sensor_001",
+    "device_id": "esp32_device",
     "temperature": 25.3,
     "humidity": 62.1,
     "timestamp": "2024-01-15T10:30:45Z",
@@ -153,7 +153,7 @@ GET http://localhost:3000/api/history?limit=100&hours=24
   "data": [
     {
       "id": 1,
-      "device_id": "esp32_sensor_001",
+      "device_id": "esp32_device",
       "temperature": 25.3,
       "humidity": 62.1,
       "created_at": "2024-01-15T10:30:45Z"
@@ -170,7 +170,7 @@ POST http://localhost:3000/api/control
 
 # Request body:
 {
-  "device_id": "esp32_sensor_001",
+  "device_id": "esp32_device",
   "command": "ON"
 }
 
@@ -179,9 +179,9 @@ POST http://localhost:3000/api/control
 # Response:
 {
   "success": true,
-  "message": "Command \"ON\" sent to device \"esp32_sensor_001\"",
+  "message": "Command \"ON\" sent to device \"esp32_device\"",
   "result": {
-    "device_id": "esp32_sensor_001",
+    "device_id": "esp32_device",
     "command": "ON",
     "status": "executed",
     "timestamp": "2024-01-15T10:30:45Z"

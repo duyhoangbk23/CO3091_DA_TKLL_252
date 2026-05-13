@@ -201,7 +201,7 @@ async function loadSensorData() {
     if (!data) return;
 
     document.getElementById('last-update').textContent = formatTimestamp(data.received_at || data.timestamp);
-    document.getElementById('device-id').textContent = data.device_id || 'esp32_sensor_001';
+    document.getElementById('device-id').textContent = data.device_id || DEFAULT_DEVICE_ID;
     document.getElementById('device-status').textContent = data.status || 'unknown';
     document.getElementById('device-status').className = data.status === 'online' ? 'badge bg-success' : 'badge bg-danger';
 

@@ -12,8 +12,8 @@ Bài test này kiểm tra kết nối ESP32 với mạng WiFi. Test bao gồm:
 ### 1. Cấu hình WiFi Credentials
 Mở file `testWiFi.ino` và cập nhật:
 ```cpp
-const char* WIFI_SSID = "Z Robotics";        // Thay bằng tên WiFi của bạn
-const char* WIFI_PASS = "28102023";    // Thay bằng mật khẩu WiFi
+const char* WIFI_SSID = "YOUR_WIFI_SSID";     // Thay bằng tên WiFi của bạn
+const char* WIFI_PASS = "YOUR_WIFI_PASSWORD"; // Thay bằng mật khẩu WiFi
 ```
 
 ### 2. Biên dịch và Upload
@@ -133,7 +133,7 @@ Khi WiFi test thành công, bạn có thể:
 #define WIFI_PASS "mypassword"
 #define MQTT_SERVER "your.mqtt.broker"
 #define MQTT_PORT 1883
-#define DEVICE_ID "esp32_1"
+#define DEVICE_ID "esp32_device"
 ```
 
 ## Lệnh Manual Console (Optional)

@@ -39,7 +39,7 @@ describe('mqttClient.init()', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
 
         expect(mqtt.connect).toHaveBeenCalledWith(expect.stringContaining('mqtt://'));
@@ -49,7 +49,7 @@ describe('mqttClient.init()', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
 
         // Kich hoat su kien 'connect'
@@ -67,7 +67,7 @@ describe('mqttClient.init()', () => {
         mqtt.connect.mockReturnValue(fakeClient);
 
         const callback = jest.fn();
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(callback);
 
         fakeClient._trigger('connect');
@@ -102,13 +102,13 @@ describe('mqttClient.init()', () => {
         mqtt.connect.mockReturnValue(fakeClient);
 
         const callback = jest.fn();
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(callback);
 
         fakeClient._trigger('connect');
 
         const payload = JSON.stringify({
-            device_id: 'esp32_1',
+            device_id: 'esp32_device',
             temperature: 32.5,
             humidity: 65,
             pm25: 15,
@@ -135,7 +135,7 @@ describe('mqttClient.init()', () => {
         mqtt.connect.mockReturnValue(fakeClient);
 
         const callback = jest.fn();
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(callback);
 
         // Kich hoat message voi payload khong phai JSON
@@ -151,7 +151,7 @@ describe('mqttClient.init()', () => {
         mqtt.connect.mockReturnValue(fakeClient);
 
         const callback = jest.fn();
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(callback);
 
         fakeClient._trigger(
@@ -172,7 +172,7 @@ describe('mqttClient.publishControl()', () => {
         const fakeClient = makeFakeClient(false); // connected = false
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
 
         const result = mqttClient.publishControl('ON');
@@ -183,7 +183,7 @@ describe('mqttClient.publishControl()', () => {
         const fakeClient = makeFakeClient(true);
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
         fakeClient._trigger('connect');
 
@@ -191,7 +191,8 @@ describe('mqttClient.publishControl()', () => {
 
         expect(fakeClient.publish).toHaveBeenCalledWith(
             'iot/device/control',
-            expect.any(String)
+            expect.any(String),
+            { qos: 1 }
         );
         const payload = JSON.parse(fakeClient.publish.mock.calls[0][1]);
         expect(payload).toMatchObject({
@@ -204,7 +205,7 @@ describe('mqttClient.publishControl()', () => {
         const fakeClient = makeFakeClient(true);
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
         fakeClient._trigger('connect');
 
@@ -221,7 +222,7 @@ describe('mqttClient.getLatestData()', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
 
         expect(mqttClient.getLatestData()).toBeNull();
@@ -231,7 +232,7 @@ describe('mqttClient.getLatestData()', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
-        const mqttClient = require('../../src/mqtt/mqttClient');
+        const mqttClient = require('../../src/services/mqtt');
         mqttClient.init(jest.fn());
         fakeClient._trigger('connect');
 

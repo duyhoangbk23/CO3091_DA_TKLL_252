@@ -1,9 +1,11 @@
 const sensorModel = require('../models/sensorModel');
 const logger = require('../logger/winston');
 
+const { DEFAULT_DEVICE_ID } = require('../config/device');
+
 // In-memory storage for latest data (for real-time MQTT updates)
 let latestData = {
-    device_id: 'esp32_device',
+    device_id: DEFAULT_DEVICE_ID,
     temperature: 0,
     humidity: 0,
     pm25: 0,
@@ -31,7 +33,7 @@ async function handleNewSensorData(data) {
         const co2 = parseInt(data.co2, 10) || 0;
         const voc = parseInt(data.voc, 10) || 0;
         latestData = {
-            device_id: data.device_id || 'esp32_device',
+            device_id: data.device_id || DEFAULT_DEVICE_ID,
             temperature: parseFloat(data.temperature),
             humidity: parseFloat(data.humidity),
             pm25,

@@ -4,6 +4,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { DEFAULT_DEVICE_ID } = require('./device');
 
 // backend/src/config → lên 4 cấp tới IOT_RTOS_Project/common
 const CONTRACT_PATH = path.join(__dirname, '../../../../common/data_format.json');
@@ -28,7 +29,7 @@ function mapSensorPayload(raw) {
     const t = parseFloat(raw.temperature);
     const h = parseFloat(raw.humidity);
     return {
-        device_id: raw.device_id || 'esp32_device',
+        device_id: raw.device_id || DEFAULT_DEVICE_ID,
         temperature: Number.isFinite(t) ? t : 0,
         humidity: Number.isFinite(h) ? h : 0,
         pm25: pm25I,

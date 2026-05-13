@@ -4,8 +4,8 @@
 // WiFi Test Configuration
 // ============================================
 // TODO: Thay đổi thông tin WiFi của bạn tại đây
-const char* WIFI_SSID = "Z Robotics";        // Tên WiFi
-const char* WIFI_PASS = "28102023";    // Mật khẩu WiFi
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
 
 // ============================================
 // Global Variables

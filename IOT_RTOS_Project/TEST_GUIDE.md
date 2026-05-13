@@ -15,7 +15,7 @@ Expected response:
 {
   "success": true,
   "data": {
-    "device_id": "esp32_sensor_001",
+    "device_id": "esp32_device",
     "temperature": 25.3,
     "humidity": 62.1,
     "timestamp": "2024-01-15T10:30:45Z",
@@ -36,7 +36,7 @@ curl "http://localhost:3000/api/history?limit=100&hours=24"
 # Send ON command
 curl -X POST http://localhost:3000/api/control \
   -H "Content-Type: application/json" \
-  -d '{"device_id": "esp32_sensor_001", "command": "ON"}'
+  -d '{"device_id": "esp32_device", "command": "ON"}'
 ```
 
 #### Test Health Check
