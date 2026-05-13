@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include "config.h"
+#include "board_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,7 +23,7 @@
 
 // Struct chứa dữ liệu cảm biến — đồng bộ với SensorSample của Hardware
 typedef struct {
-    char     device_id[16]; // ID thiet bi, lay tu DEVICE_ID trong config.h
+    char     device_id[24]; // ID thiet bi, lay tu board_config.h
     float    temperature;   // °C (SHTC3)
     float    humidity;      // %RH (SHTC3)
     int16_t  pm25;          // µg/m3 (PMS7003 - ATM)
