@@ -72,6 +72,7 @@ services:
     volumes:
       - ./IOT_RTOS_Project/iot_backend/backend/src:/app/src
       - ./IOT_RTOS_Project/iot_backend/backend/logs:/app/logs
+      - ./IOT_RTOS_Project/common:/common:ro
     restart: unless-stopped
     command: npm start
 

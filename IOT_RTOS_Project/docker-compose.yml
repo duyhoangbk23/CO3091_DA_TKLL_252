@@ -74,6 +74,7 @@ services:
       - ./iot_backend/backend/src:/app/src:ro
       - ./iot_backend/backend/logs:/app/logs
       - ./iot_backend/frontend/public:/app/public:ro
+      - ./common:/common:ro
     networks:
       - iot-network
     restart: unless-stopped

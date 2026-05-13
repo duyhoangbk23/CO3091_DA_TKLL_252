@@ -230,6 +230,43 @@ function updateSensorSection(data) {
     document.getElementById('sensor-voc-status').textContent = getVocStatus(vocValue);
 }
 
+function getTempStatus(temp) {
+    if (temp < 0) return 'Cold';
+    if (temp < 20) return 'Cool';
+    if (temp < 30) return 'Normal';
+    if (temp < 40) return 'Warm';
+    return 'Hot';
+}
+
+function getHumidityStatus(humidity) {
+    if (humidity < 30) return 'Dry';
+    if (humidity < 50) return 'Normal';
+    if (humidity < 70) return 'Humid';
+    return 'Very Humid';
+}
+
+function getPm25Status(pm25) {
+    if (pm25 <= 50) return 'Good';
+    if (pm25 <= 100) return 'Moderate';
+    if (pm25 <= 150) return 'Unhealthy for Sensitive Groups';
+    if (pm25 <= 250) return 'Unhealthy';
+    return 'Very Unhealthy';
+}
+
+function getCo2Status(co2) {
+    if (co2 <= 800) return 'Good';
+    if (co2 <= 1200) return 'Moderate';
+    if (co2 <= 2000) return 'Poor';
+    return 'Critical';
+}
+
+function getVocStatus(voc) {
+    if (voc <= 250) return 'Good';
+    if (voc <= 500) return 'Moderate';
+    if (voc <= 1000) return 'Poor';
+    return 'Critical';
+}
+
 /**
  * Load control history from backend
  */

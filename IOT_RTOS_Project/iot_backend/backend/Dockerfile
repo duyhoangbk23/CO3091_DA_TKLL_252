@@ -30,7 +30,7 @@ RUN mkdir -p logs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "const port = process.env.PORT || 3000; require('http').get(`http://localhost:${port}/health/live`, (r) => { if (r.statusCode !== 200) process.exit(1); }).on('error', () => process.exit(1));"
+    CMD node -e "const port = process.env.PORT || 3000; require('http').get('http://localhost:' + port + '/health/live', (r) => { if (r.statusCode !== 200) process.exit(1); }).on('error', () => process.exit(1));"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
