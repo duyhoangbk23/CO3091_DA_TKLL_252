@@ -1,0 +1,39 @@
+Kiến trúc tổng thể được chia thành bốn khối: thiết bị nhúng, truyền thông IoT, server/backend và dashboard web. Thiết bị nhúng chịu trách nhiệm đo và phản ứng cục bộ. Server chịu trách nhiệm nhận dữ liệu, lưu lịch sử và cung cấp API. Dashboard web là giao diện quan sát và điều khiển.
+
+\section{Luồng dữ liệu}
+
+\begin{center}
+\texttt{Sensor -> ESP32/Firmware -> MQTT -> Backend -> Database -> API -> Web Dashboard}
+\end{center}
+
+Luồng điều khiển đi ngược lại:
+
+\begin{center}
+\texttt{Web Dashboard -> API -> Backend -> MQTT -> ESP32 -> Device/LED}
+\end{center}
+
+Trong source hiện tại, đoạn \texttt{Sensor -> ESP32/Firmware -> log/LED} đã được hiện thực. Các đoạn MQTT, backend, database và web đang được mô tả qua README module và contract chung.
+
+\section{Phân rã module}
+
+\begin{table}[H]
+    \centering
+    \caption{Các module chính của dự án}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Module & Trách nhiệm & Hiện trạng trong repo \\
+        \midrule
+        \texttt{hardware/main} & Driver cảm biến, đánh giá IAQ, điều khiển output, ghi log SPIFFS & Có source C++/Arduino \\
+        \texttt{rtos} & Thiết kế task, queue, timing và MQTT client trên ESP32 & Có README định hướng \\
+        \texttt{common} & MQTT topic, data format, API contract & Có README contract \\
+        \texttt{iot\_backend/backend} & Nhận MQTT, lưu dữ liệu, cung cấp API & Có README thiết kế \\
+        \texttt{iot\_backend/database} & Lưu dữ liệu sensor theo thời gian & Có README thiết kế MySQL \\
+        \texttt{iot\_backend/frontend} & Dashboard realtime, history, control panel & Có README thiết kế \\
+        \texttt{integration\_test} & Kiểm thử pipeline dữ liệu và điều khiển end-to-end & Có README test plan \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Nguyên tắc thiết kế}
+
+Các tầng được tách theo trách nhiệm. Driver chỉ đọc cảm biến và kiểm tra giao thức. \texttt{SensorHub} gom dữ liệu thành \texttt{SensorSample}. \texttt{IaqEvaluator} chỉ xử lý trạng thái IAQ, không phụ thuộc chân GPIO. \texttt{IaqController} chỉ áp dụng output. Backend và dashboard không đọc trực tiếp phần cứng, mà làm việc qua MQTT/API.

@@ -1,0 +1,5 @@
+Báo cáo đã tổ chức lại dự án theo đúng các phần của một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí: thiết kế phần cứng, firmware đọc dữ liệu, RTOS/IoT truyền dữ liệu, server/database và dashboard web. Source hiện tại đã có nền tảng firmware quan trọng để đọc cảm biến, đánh giá IAQ, điều khiển output và ghi log cục bộ.
+
+Hướng phát triển trực tiếp là hiện thực tầng RTOS bằng các task và queue, bổ sung MQTT client trên ESP32, chuẩn hóa payload JSON theo \texttt{common}, xây dựng backend Node.js/Express nhận MQTT và cung cấp API, thiết kế database lưu lịch sử sensor, sau đó hoàn thiện dashboard web realtime/history/control.
+
+Khi hệ thống chạy end-to-end, nhóm cần thu dữ liệu thực tế trong phòng học hoặc phòng làm việc, hiệu chuẩn ngưỡng theo môi trường thật và bổ sung cơ chế xử lý lỗi như mất Wi-Fi, mất MQTT, cảm biến timeout, payload sai định dạng hoặc database không khả dụng.

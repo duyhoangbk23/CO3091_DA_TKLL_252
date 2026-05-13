@@ -1,0 +1,35 @@
+\section{Kiểm thử firmware}
+
+Kiểm thử firmware tập trung vào từng driver và luồng xử lý chính. Các thư mục test hiện có gồm \texttt{testPMS7003}, \texttt{testCO2}, \texttt{testSHTC3}, \texttt{testVOC}. Mỗi test cần xác nhận cảm biến trả dữ liệu hợp lệ, timeout không làm treo hệ thống và cờ hợp lệ phản ánh đúng trạng thái kết nối.
+
+\begin{table}[H]
+    \centering
+    \caption{Kế hoạch kiểm thử firmware}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Nhóm kiểm thử & Mục tiêu & Kết quả kỳ vọng \\
+        \midrule
+        PMS7003 & Kiểm tra UART frame và checksum & \texttt{ok\_pms=1}, PM thay đổi hợp lý \\
+        Modbus CO2 & Kiểm tra request/response RS485 & Đọc được ppm, timeout khi rút cảm biến \\
+        SHTC3 RS485 & Kiểm tra nhiệt độ, độ ẩm fixed-point & Giá trị đúng đơn vị \(^{\circ}C\), \%RH \\
+        VOC ADC & Kiểm tra ADC và trung bình trượt & Raw thay đổi, avg mượt hơn raw \\
+        IAQ evaluator & Kiểm tra zone và output & Đổi trạng thái đúng ngưỡng, có hysteresis \\
+        CSV logger & Kiểm tra ghi/dump/clear log & File CSV đủ header và dữ liệu \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Kiểm thử tích hợp}
+
+Khi hoàn thiện IoT/backend/frontend, kiểm thử tích hợp cần bao phủ hai pipeline:
+
+\begin{itemize}[leftmargin=2em]
+    \item Data pipeline: \texttt{Sensor -> ESP32 -> MQTT -> Backend -> DB -> API -> Web}.
+    \item Control pipeline: \texttt{Web -> API -> Backend -> MQTT -> ESP32 -> Device}.
+\end{itemize}
+
+README integration test đã định hướng hai script \code{test_pipeline.js} và \code{test_control_flow.js}. Hai script này nên kiểm tra dữ liệu có đi đến dashboard và lệnh từ web có làm thay đổi LED/thiết bị đúng như kỳ vọng.
+
+\section{Chỉ số đánh giá}
+
+Các chỉ số đánh giá gồm tỷ lệ mẫu đo hợp lệ, độ trễ từ lúc vượt ngưỡng đến lúc output đổi trạng thái, số lần bật/tắt trong một khoảng thời gian, tỷ lệ thời gian ở vùng an toàn, khả năng vận hành khi mất server và độ ổn định của pipeline MQTT/API/web.

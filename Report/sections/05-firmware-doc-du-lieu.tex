@@ -1,0 +1,28 @@
+\section{Mẫu dữ liệu thống nhất}
+
+Firmware dùng \texttt{SensorSample} làm cấu trúc dữ liệu trung tâm. Mẫu đo chứa thời gian \texttt{ms}, các chỉ số PM, nhiệt độ x10, độ ẩm x10, CO2 ppm, VOC raw, VOC trung bình và cờ hợp lệ cho từng nhóm cảm biến. Các giá trị thiếu được mã hóa bằng sentinel như \texttt{-1}, \texttt{INT16\_MIN} hoặc \texttt{0xFFFF}.
+
+\begin{lstlisting}[style=engineering,caption={Luồng xử lý chính trong loop}]
+SensorSample s = g_hub.readSample();
+g_store.publish(s);
+
+g_iaq = g_eval.evaluate(s);
+g_ctrl.apply(g_iaq);
+
+printIAQ(s, g_iaq);
+g_csv.logToSpiffs(s);
+\end{lstlisting}
+
+\section{Đọc cảm biến}
+
+\texttt{SensorHub} là lớp gom dữ liệu từ các driver. Khi gọi \texttt{readSample()}, hub đọc PMS7003, đọc register CO2, đọc register nhiệt độ/độ ẩm và đọc VOC analog. Nếu một cảm biến không trả dữ liệu đúng, các cờ \texttt{ok\_pms}, \texttt{ok\_co2}, \texttt{ok\_sht} giữ giá trị false để tầng sau không hiểu nhầm dữ liệu lỗi là dữ liệu thật.
+
+\section{Đánh giá IAQ}
+
+\texttt{IaqEvaluator} ánh xạ dữ liệu đo sang \texttt{IaqState}. Mỗi chỉ số có vùng \texttt{SAFE}, \texttt{INTERVENE}, \texttt{ALARM}. Với CO2, PM và VOC, hàm \texttt{eval3} dùng ngưỡng an toàn, ngưỡng cảnh báo và hysteresis. Với nhiệt độ và độ ẩm, firmware có hàm riêng vì trạng thái tốt là nằm trong khoảng vận hành.
+
+Sau khi phân vùng, evaluator sinh yêu cầu điều khiển: CO2/VOC kích hoạt thông gió, PM kích hoạt HEPA, VOC kích hoạt lọc than, nhiệt độ kích hoạt điều hòa, độ ẩm thấp kích hoạt tạo ẩm. Các output dùng hold-time 5000 ms để tránh bật/tắt liên tục.
+
+\section{Log và vận hành cục bộ}
+
+\texttt{CsvLogger} ghi dữ liệu vào SPIFFS tại \texttt{/log.csv}. Firmware hỗ trợ lệnh Serial \texttt{START}, \texttt{STOP}, \texttt{CLEAR}, \texttt{DUMP}, \texttt{INTERVAL=...} để phục vụ thí nghiệm. Nhờ đó nhóm có thể thu dữ liệu trước khi hoàn thiện phần MQTT/backend.

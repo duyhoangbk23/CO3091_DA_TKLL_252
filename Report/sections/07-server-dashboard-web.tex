@@ -1,0 +1,31 @@
+\section{Backend server}
+
+Backend được thiết kế bằng Node.js và Express. Vai trò chính là nhận dữ liệu từ MQTT broker, validate payload, lưu dữ liệu lịch sử vào database và cung cấp API cho dashboard. README backend định hướng các endpoint chính: \texttt{GET /api/data}, \texttt{GET /api/history}, \texttt{POST /api/control}.
+
+\begin{table}[H]
+    \centering
+    \caption{API dự kiến cho dashboard}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        API & Chức năng & Nguồn/đích dữ liệu \\
+        \midrule
+        \texttt{GET /api/data} & Lấy trạng thái realtime mới nhất & RAM/cache backend \\
+        \texttt{GET /api/history} & Lấy dữ liệu lịch sử theo khoảng thời gian & Database \\
+        \texttt{POST /api/control} & Nhận lệnh từ web và publish MQTT xuống ESP32 & MQTT topic control \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Cơ sở dữ liệu}
+
+README database đang mô tả MySQL để lưu dữ liệu sensor theo thời gian. Bảng dữ liệu cần có \texttt{device\_id}, timestamp, các chỉ số IAQ và trạng thái hợp lệ. Với dữ liệu chuỗi thời gian, cột \texttt{created\_at} hoặc \texttt{timestamp} cần được index để truy vấn lịch sử nhanh.
+
+Realtime không nên lấy trực tiếp từ database. Backend nên giữ mẫu mới nhất trong RAM/cache để dashboard gọi nhanh qua \texttt{/api/data}; database phục vụ biểu đồ lịch sử, thống kê và phân tích sau.
+
+\section{Dashboard web}
+
+Frontend được thiết kế bằng HTML/CSS/JavaScript, Bootstrap và Chart.js. Dashboard cần có ba nhóm màn hình: realtime dashboard, analytics/history và control panel. Realtime dashboard hiển thị CO2, PM2.5, VOC, nhiệt độ, độ ẩm, vùng IAQ và trạng thái thiết bị. Analytics hiển thị biểu đồ theo thời gian. Control panel gửi lệnh bật/tắt hoặc override qua API.
+
+\section{Luồng điều khiển web đến thiết bị}
+
+Khi người dùng nhấn nút điều khiển trên dashboard, frontend gọi \texttt{POST /api/control}. Backend validate lệnh, publish xuống \texttt{iot/device/control}. ESP32 nhận MQTT message, cập nhật trạng thái điều khiển hoặc override theo chính sách an toàn. Các lệnh từ web không nên bỏ qua cảnh báo cục bộ; firmware vẫn cần ưu tiên trạng thái \texttt{ALARM}.

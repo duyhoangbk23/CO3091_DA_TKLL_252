@@ -1,0 +1,37 @@
+\section{Các đại lượng giám sát IAQ}
+
+Hệ thống theo dõi năm nhóm đại lượng chính: CO2, PM2.5/PM10, VOC, nhiệt độ và độ ẩm. CO2 phản ánh mức thông gió và mật độ người trong phòng. PM2.5/PM10 phản ánh bụi mịn. VOC phản ánh hợp chất hữu cơ bay hơi từ vật liệu, hóa chất hoặc hoạt động sinh hoạt. Nhiệt độ và độ ẩm ảnh hưởng đến tiện nghi nhiệt và cảm nhận môi trường.
+
+\begin{table}[H]
+    \centering
+    \caption{Mốc vận hành tham khảo cho hệ thống IAQ}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X X}
+        \toprule
+        Chỉ số & An toàn & Cần can thiệp & Cảnh báo \\
+        \midrule
+        CO2 & Dưới 1000 ppm & 1000--1500 ppm & Trên 1500 ppm \\
+        PM2.5 & Dưới 15 \(\mu g/m^3\) & 15--35 \(\mu g/m^3\) & Trên 35 \(\mu g/m^3\) \\
+        VOC & Dưới 500 & 500--1000 & Trên 1000 \\
+        Nhiệt độ & Dưới 28 \(^{\circ}C\) & 28--32 \(^{\circ}C\) & Trên 32 \(^{\circ}C\) \\
+        Độ ẩm & 30--50\%RH & 25--30\%RH hoặc 50--60\%RH & Dưới 25\%RH hoặc trên 60\%RH \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Các mốc trên được dùng cho prototype điều khiển. Khi triển khai thật, nhóm cần hiệu chuẩn lại theo cảm biến thực tế, điều kiện phòng và tiêu chuẩn vận hành được chọn.
+
+\section{Yêu cầu chức năng}
+
+\begin{enumerate}[leftmargin=2em]
+    \item ESP32 đọc dữ liệu cảm biến theo chu kỳ và tạo mẫu đo có dấu thời gian.
+    \item Firmware biểu diễn được dữ liệu thiếu hoặc lỗi bằng cờ hợp lệ, tránh dùng giá trị sai cho quyết định điều khiển.
+    \item Hệ thống phân vùng từng chỉ số thành \texttt{SAFE}, \texttt{INTERVENE} và \texttt{ALARM}.
+    \item Điều khiển thiết bị cục bộ theo nguyên nhân: thông gió cho CO2/VOC, HEPA cho bụi mịn, than hoạt tính cho VOC, điều hòa cho nhiệt độ, tạo ẩm cho độ ẩm thấp.
+    \item Ghi log CSV cục bộ để kiểm thử và đối chiếu.
+    \item Gửi dữ liệu lên backend qua MQTT trong phiên bản IoT hoàn chỉnh.
+    \item Dashboard hiển thị realtime, lịch sử và hỗ trợ gửi lệnh điều khiển.
+\end{enumerate}
+
+\section{Yêu cầu phi chức năng}
+
+Firmware cần nhẹ, ổn định trên ESP32 và tránh làm treo vòng lặp khi cảm biến mất kết nối. Các driver có timeout, dữ liệu số thực được ưu tiên lưu dạng fixed-point x10, và tầng điều khiển dùng hysteresis/hold-time để giảm bật tắt liên tục. Phần server cần validate dữ liệu MQTT/API, tách cấu hình qua biến môi trường và lưu lịch sử theo timestamp để truy vấn dashboard.

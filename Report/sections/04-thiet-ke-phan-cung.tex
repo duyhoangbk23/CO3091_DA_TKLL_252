@@ -1,0 +1,32 @@
+\section{Nền tảng điều khiển}
+
+Thiết bị nhúng dùng ESP32 NodeMCU-32S. ESP32 phù hợp vì có nhiều UART phần cứng, ADC, Wi-Fi tích hợp và hỗ trợ FreeRTOS. Trong firmware hiện tại, UART1 được dùng cho PMS7003, UART2 được dùng cho RS485 Modbus, và ADC1 GPIO34 được dùng cho VOC analog.
+
+\begin{table}[H]
+    \centering
+    \caption{Pin map chính trong firmware}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
+        \toprule
+        Chức năng & Pin ESP32 & Ghi chú \\
+        \midrule
+        PMS RX & GPIO 26 & ESP32 nhận dữ liệu từ TX của PMS7003. \\
+        PMS TX & GPIO 27 & Dự phòng nếu cần gửi lệnh cho PMS7003. \\
+        RS485 RX & GPIO 16 & UART2 nhận dữ liệu từ module RS485. \\
+        RS485 TX & GPIO 17 & UART2 gửi request Modbus RTU. \\
+        RS485 DE/RE & -1 & Source giả định module RS485 tự điều hướng truyền/nhận. \\
+        VOC ADC & GPIO 34 & ADC1 input-only, phù hợp đọc tín hiệu analog. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Cảm biến và giao tiếp}
+
+PMS7003 truyền frame nhị phân qua UART 9600 bps. Driver tìm header \texttt{0x42 0x4D}, đọc đủ frame, kiểm tra checksum rồi tách các giá trị PM1.0, PM2.5 và PM10.
+
+CO2 và SHTC3 dùng RS485 Modbus RTU. Firmware tạo request function code \texttt{0x03}, tính CRC16, gửi qua UART2 và kiểm tra response trước khi dùng dữ liệu. CO2 được đọc từ slave ID 1, register \texttt{0x0001}; SHTC3 được đọc từ slave ID 2, hai register bắt đầu tại \texttt{0x0000}.
+
+VOC được đọc qua ADC 12-bit. Lớp \texttt{VocAnalog} cấu hình ADC attenuation và dùng buffer vòng để tính trung bình trượt, giúp giảm nhiễu tức thời.
+
+\section{Thiết bị chấp hành và cảnh báo}
+
+Source hiện tại dùng LED để mô phỏng thiết bị chấp hành và cảnh báo. LED xanh biểu diễn thiết bị như HEPA, thông gió, lọc than, điều hòa, tạo ẩm. LED đỏ biểu diễn cảnh báo theo từng nguyên nhân: CO2, PM, VOC, nhiệt độ và độ ẩm. Các chân được định nghĩa trong \texttt{Pins.h} và có thể đổi theo wiring thực tế.
