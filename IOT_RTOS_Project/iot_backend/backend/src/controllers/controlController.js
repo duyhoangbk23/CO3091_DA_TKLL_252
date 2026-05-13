@@ -3,8 +3,32 @@ const mqttService = require('../services/mqtt');
 const logger = require('../logger/winston');
 
 const CONTROL_COMMAND_MAP = {
-    ON: 'LED_ON',
-    OFF: 'LED_OFF'
+    REBOOT: 'REBOOT',
+    TEST_LED: 'TEST_LED',
+    MUTE_ALARM: 'MUTE_ALARM',
+    GET_STATUS: 'GET_STATUS',
+    LED_ON: 'LED_ON',
+    LED_OFF: 'LED_OFF',
+    HEPA_ON: 'HEPA_ON',
+    HEPA_OFF: 'HEPA_OFF',
+    VENT_ON: 'VENT_ON',
+    VENT_OFF: 'VENT_OFF',
+    CARBON_ON: 'CARBON_ON',
+    CARBON_OFF: 'CARBON_OFF',
+    AC_ON: 'AC_ON',
+    AC_OFF: 'AC_OFF',
+    HUMID_ON: 'HUMID_ON',
+    HUMID_OFF: 'HUMID_OFF',
+    ALARM_CO2_ON: 'ALARM_CO2_ON',
+    ALARM_CO2_OFF: 'ALARM_CO2_OFF',
+    ALARM_PM_ON: 'ALARM_PM_ON',
+    ALARM_PM_OFF: 'ALARM_PM_OFF',
+    ALARM_VOC_ON: 'ALARM_VOC_ON',
+    ALARM_VOC_OFF: 'ALARM_VOC_OFF',
+    ALARM_TEMP_ON: 'ALARM_TEMP_ON',
+    ALARM_TEMP_OFF: 'ALARM_TEMP_OFF',
+    ALARM_RH_ON: 'ALARM_RH_ON',
+    ALARM_RH_OFF: 'ALARM_RH_OFF'
 };
 
 /**
@@ -43,7 +67,7 @@ async function sendControlCommand(deviceId, command) {
             status: 'sent'
         });
 
-        logger.info(`📤 Control command sent: ${deviceId} -> ${mqttCommand}`);
+        logger.info(`Control command sent: ${deviceId} -> ${mqttCommand}`);
 
         return {
             success: true,

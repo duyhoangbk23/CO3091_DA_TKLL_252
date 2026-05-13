@@ -20,7 +20,6 @@ let latestData = {
     pm25:        0,
     co2:         0,
     voc:         0,
-    air_quality: 0,
     alert_level: 0,
     timestamp_ms: 0,
     received_at: null,
@@ -41,14 +40,11 @@ function getLatestData()    { return latestData; }
 async function saveSensorData(data) {
     if (!db) return;
     const q = `INSERT INTO sensor_data (
-        device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        device_id, temperature, humidity, pm25, co2, voc, alert_level, timestamp
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     const pm25 = data.pm25 !== undefined && data.pm25 !== null ? parseInt(data.pm25, 10) : -1;
     const co2 = data.co2 !== undefined && data.co2 !== null ? parseInt(data.co2, 10) : -1;
     const voc = data.voc !== undefined && data.voc !== null ? parseInt(data.voc, 10) : -1;
-    const airQ = data.air_quality !== undefined && data.air_quality !== null
-        ? parseInt(data.air_quality, 10)
-        : (Number.isFinite(pm25) && pm25 >= 0 ? pm25 : 0);
     await db.query(q, [
         data.device_id,
         data.temperature,
@@ -56,7 +52,6 @@ async function saveSensorData(data) {
         Number.isNaN(pm25) ? -1 : pm25,
         Number.isNaN(co2) ? -1 : co2,
         Number.isNaN(voc) ? -1 : voc,
-        Number.isNaN(airQ) ? 0 : airQ,
         data.alert_level || 0,
         data.timestamp_ms ?? data.timestamp ?? Date.now()
     ]);
@@ -65,7 +60,7 @@ async function saveSensorData(data) {
 async function getHistoricalData(limit = 100, hours = 24) {
     if (!db) return [];
     const q = `
-        SELECT id, device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level,
+        SELECT id, device_id, temperature, humidity, pm25, co2, voc, alert_level,
                timestamp AS timestamp_ms, created_at
         FROM sensor_data
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
@@ -104,28 +99,42 @@ app.post('/api/control', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Missing device_id or command' });
     }
 
-    const state = command.toUpperCase();
-    if (state !== 'ON' && state !== 'OFF') {
-        return res.status(400).json({ success: false, error: 'Invalid state. Use ON or OFF' });
+    const normalizedCommand = command.toUpperCase();
+    const supportedCommands = new Set([
+        'REBOOT', 'TEST_LED', 'MUTE_ALARM', 'GET_STATUS',
+        'LED_ON', 'LED_OFF',
+        'HEPA_ON', 'HEPA_OFF',
+        'VENT_ON', 'VENT_OFF',
+        'CARBON_ON', 'CARBON_OFF',
+        'AC_ON', 'AC_OFF',
+        'HUMID_ON', 'HUMID_OFF',
+        'ALARM_CO2_ON', 'ALARM_CO2_OFF',
+        'ALARM_PM_ON', 'ALARM_PM_OFF',
+        'ALARM_VOC_ON', 'ALARM_VOC_OFF',
+        'ALARM_TEMP_ON', 'ALARM_TEMP_OFF',
+        'ALARM_RH_ON', 'ALARM_RH_OFF'
+    ]);
+
+    if (!supportedCommands.has(normalizedCommand)) {
+        return res.status(400).json({ success: false, error: 'Invalid command. Must be a supported control command.' });
     }
-    const mqttCommand = `LED_${state}`;
 
     try {
-        if (!mqttClient || !mqttClient.publishControl(mqttCommand, device_id)) {
+        if (!mqttClient || !mqttClient.publishControl(normalizedCommand, device_id)) {
             throw new Error('MQTT client not connected');
         }
 
         if (db) {
             await db.query(
                 'INSERT INTO control_log (device_id, command, status) VALUES (?, ?, ?)',
-                [device_id, mqttCommand, 'sent']
+                [device_id, normalizedCommand, 'sent']
             );
         }
 
         res.json({
             success: true,
-            message: `Control "${state}" sent to device "${device_id}"`,
-            result: { device_id, command: state, mqtt_command: mqttCommand, status: 'sent', timestamp: new Date().toISOString() }
+            message: `Control "${normalizedCommand}" sent to device "${device_id}"`,
+            result: { device_id, command: normalizedCommand, mqtt_command: normalizedCommand, status: 'sent', timestamp: new Date().toISOString() }
         });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Failed to send control: ' + err.message });

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "global.h"
 #include "tasks.h"
-
+#include "../hardware/main/main.ino"
 // extern void vTaskRunAllTests(void *pvParameters);
 void setup() {
     Serial.begin(115200);

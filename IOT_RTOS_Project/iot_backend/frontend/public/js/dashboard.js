@@ -37,17 +37,17 @@ function updateDashboard(data) {
 
     const tempValue = formatValue(data.temperature, 1);
     const humidityValue = formatValue(data.humidity, 1);
-    const airQualityValue = Number.parseInt(data.air_quality, 10) || 0;
+    const pm25Value = Number.parseInt(data.pm25, 10) || 0;
     const alertLevelValue = Number.parseInt(data.alert_level, 10) || 0;
 
     document.getElementById('temperature-value').textContent = tempValue + ' C';
     document.getElementById('humidity-value').textContent = humidityValue + '% RH';
-    document.getElementById('air-quality-value').textContent = airQualityValue;
+    document.getElementById('air-quality-value').textContent = pm25Value;
     document.getElementById('alert-level-value').textContent = alertLevelValue;
 
     document.getElementById('temp-status').textContent = getTempStatus(data.temperature);
     document.getElementById('humidity-status').textContent = getHumidityStatus(data.humidity);
-    document.getElementById('air-quality-status').textContent = getAirQualityStatus(airQualityValue);
+    document.getElementById('air-quality-status').textContent = getAirQualityStatus(pm25Value);
     document.getElementById('alert-level-status').textContent = getAlertStatus(alertLevelValue);
 
     const receivedAt = data.received_at || new Date().toISOString();

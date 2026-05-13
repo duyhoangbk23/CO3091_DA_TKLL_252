@@ -9,7 +9,7 @@
 #include "IAQTypes.h"
 #include "IaqEvaluator.h"
 #include "IaqController.h"
-
+#include "tasks.h"
 // ======================
 // Pin map (NodeMCU-32S)
 // ======================
@@ -181,5 +181,6 @@ void loop() {
 
   // vẫn lưu CSV vào SPIFFS để plot python
   g_csv.logToSpiffs(s);
+
 
 }

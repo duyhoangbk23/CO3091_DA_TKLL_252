@@ -164,12 +164,12 @@ function exportToCsv() {
         return;
     }
 
-    let csv = 'Timestamp,Device ID,Temperature (C),Humidity (% RH),PM2.5,CO2,VOC,Air Quality (legacy),Alert Level,Device Timestamp\n';
+    let csv = 'Timestamp,Device ID,Temperature (C),Humidity (% RH),PM2.5,CO2,VOC,Alert Level,Device Timestamp\n';
 
     allData.forEach(row => {
         const timestamp = formatTimestamp(row.created_at);
-        const pm = row.pm25 != null ? row.pm25 : (row.air_quality ?? '');
-        csv += `"${timestamp}","${row.device_id}",${row.temperature},${row.humidity},${pm},${row.co2 ?? ''},${row.voc ?? ''},${row.air_quality ?? ''},${row.alert_level ?? 0},${row.timestamp_ms ?? ''}\n`;
+        const pm = row.pm25 != null ? row.pm25 : '';
+        csv += `"${timestamp}","${row.device_id}",${row.temperature},${row.humidity},${pm},${row.co2 ?? ''},${row.voc ?? ''},${row.alert_level ?? 0},${row.timestamp_ms ?? ''}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });

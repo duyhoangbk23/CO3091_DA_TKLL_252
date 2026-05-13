@@ -76,7 +76,7 @@ describe('mqttClient.init()', () => {
             device_id: 'esp32_device',
             temperature: 28.5,
             humidity: 65.0,
-            air_quality: 220,
+            pm25: 220,
             alert_level: 0,
             timestamp_ms: 123456
         });
@@ -88,7 +88,6 @@ describe('mqttClient.init()', () => {
                 temperature: 28.5,
                 humidity:    65.0,
                 device_id:   'esp32_device',
-                air_quality: 220,
                 pm25: 220,
                 co2: 0,
                 voc: 0,
@@ -98,7 +97,7 @@ describe('mqttClient.init()', () => {
         );
     });
 
-    test('RTOS payload pm25/co2/voc map dung va air_quality = pm25', () => {
+    test('RTOS payload pm25/co2/voc map dung', () => {
         const fakeClient = makeFakeClient();
         mqtt.connect.mockReturnValue(fakeClient);
 
@@ -125,7 +124,8 @@ describe('mqttClient.init()', () => {
                 pm25: 15,
                 co2: 450,
                 voc: 350,
-                air_quality: 15
+                alert_level: 0,
+                timestamp_ms: 999888
             })
         );
     });
@@ -239,7 +239,7 @@ describe('mqttClient.getLatestData()', () => {
             device_id: 'esp32_device',
             temperature: 33.1,
             humidity: 55.5,
-            air_quality: 350,
+            pm25: 350,
             alert_level: 1,
             timestamp_ms: 999
         });
@@ -249,7 +249,6 @@ describe('mqttClient.getLatestData()', () => {
         expect(data).not.toBeNull();
         expect(data.temperature).toBe(33.1);
         expect(data.humidity).toBe(55.5);
-        expect(data.air_quality).toBe(350);
         expect(data.pm25).toBe(350);
         expect(data.co2).toBe(0);
         expect(data.voc).toBe(0);

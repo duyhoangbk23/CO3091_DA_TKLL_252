@@ -42,7 +42,6 @@ const schemas = {
         device_id: Joi.string().required(),
         temperature: Joi.number().required(),
         humidity: Joi.number().required(),
-        air_quality: Joi.number().integer().min(0).default(0),
         alert_level: Joi.number().integer().min(0).max(2).default(0),
         timestamp_ms: Joi.number().integer().min(0).required()
     }),
@@ -50,7 +49,20 @@ const schemas = {
     // Control command validation
     controlCommand: Joi.object({
         device_id: Joi.string().required(),
-        command: Joi.string().uppercase().valid('ON', 'OFF').required()
+        command: Joi.string().uppercase().valid(
+            'REBOOT', 'TEST_LED', 'MUTE_ALARM', 'GET_STATUS',
+            'LED_ON', 'LED_OFF',
+            'HEPA_ON', 'HEPA_OFF',
+            'VENT_ON', 'VENT_OFF',
+            'CARBON_ON', 'CARBON_OFF',
+            'AC_ON', 'AC_OFF',
+            'HUMID_ON', 'HUMID_OFF',
+            'ALARM_CO2_ON', 'ALARM_CO2_OFF',
+            'ALARM_PM_ON', 'ALARM_PM_OFF',
+            'ALARM_VOC_ON', 'ALARM_VOC_OFF',
+            'ALARM_TEMP_ON', 'ALARM_TEMP_OFF',
+            'ALARM_RH_ON', 'ALARM_RH_OFF'
+        ).required()
     }),
 
     // History query validation
