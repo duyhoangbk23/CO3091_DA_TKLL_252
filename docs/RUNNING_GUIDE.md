@@ -46,7 +46,7 @@ docker ps
 Chay tu thu muc root cua repo:
 
 ```powershell
-cd e:\File\hoc\BK\252-DATKLL\CO3091_DA_TKLL_252
+cd D:\ADUY\252\DA_TKLL\CO3091_DA_TKLL_252
 docker compose up -d --build
 ```
 
