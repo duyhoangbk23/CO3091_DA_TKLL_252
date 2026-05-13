@@ -16,6 +16,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const { initializeDatabase, closeDatabase } = require('./config/database');
@@ -60,6 +62,13 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
+
+// Serve frontend static files from the public folder
+let publicPath = path.join(__dirname, '../public');
+if (!fs.existsSync(publicPath)) {
+    publicPath = path.join(__dirname, '../../frontend/public');
+}
+app.use(express.static(publicPath));
 
 // ==================== REQUEST LOGGING MIDDLEWARE ====================
 app.use((req, res, next) => {
