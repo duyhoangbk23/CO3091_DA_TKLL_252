@@ -34,7 +34,6 @@ beforeEach(() => {
         device_id:   'esp32_device',
         temperature: 0,
         humidity:    0,
-        air_quality: 0,
         alert_level: 0,
         timestamp_ms: 0,
         status:      'online'
@@ -73,11 +72,10 @@ describe('GET /api/data', () => {
     });
 
     test('tra ve du lieu moi nhat sau khi cap nhat latestData', async () => {
-        setLatestData({ device_id: 'esp32_device', temperature: 31.5, humidity: 72.3, air_quality: 310, alert_level: 1, timestamp_ms: 123 });
+        setLatestData({ device_id: 'esp32_device', temperature: 31.5, humidity: 72.3, alert_level: 1, timestamp_ms: 123 });
         const res = await request(app).get('/api/data');
         expect(res.body.data.temperature).toBe(31.5);
         expect(res.body.data.humidity).toBe(72.3);
-        expect(res.body.data.air_quality).toBe(310);
         expect(res.body.data.alert_level).toBe(1);
         expect(res.body.data.timestamp_ms).toBe(123);
     });
@@ -155,33 +153,33 @@ describe('POST /api/control', () => {
         expect(res.status).toBe(400);
     });
 
-    test('tu choi lenh khong hop le (khong phai ON/OFF)', async () => {
+    test('tu choi lenh khong hop le (khong phai supported command)', async () => {
         setMqtt(makeMockMqtt());
         const res = await request(app)
             .post('/api/control')
-            .send({ device_id: 'esp32_device', command: 'REBOOT' });
+            .send({ device_id: 'esp32_device', command: 'INVALID_COMMAND' });
         expect(res.status).toBe(400);
-        expect(res.body.error).toMatch(/Invalid/i);
+        expect(res.body.error).toMatch(/Invalid command/i);
     });
 
-    test('gui lenh ON thanh cong qua MQTT', async () => {
+    test('gui lenh LED_ON thanh cong qua MQTT', async () => {
         setMqtt(makeMockMqtt(true));
         const res = await request(app)
             .post('/api/control')
-            .send({ device_id: 'esp32_device', command: 'ON' });
+            .send({ device_id: 'esp32_device', command: 'LED_ON' });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.result.command).toBe('ON');
+        expect(res.body.result.command).toBe('LED_ON');
         expect(res.body.result.status).toBe('sent');
     });
 
-    test('gui lenh OFF thanh cong (case-insensitive)', async () => {
+    test('gui lenh LED_OFF thanh cong (case-insensitive)', async () => {
         setMqtt(makeMockMqtt(true));
         const res = await request(app)
             .post('/api/control')
-            .send({ device_id: 'esp32_device', command: 'off' });
+            .send({ device_id: 'esp32_device', command: 'led_off' });
         expect(res.status).toBe(200);
-        expect(res.body.result.command).toBe('OFF');
+        expect(res.body.result.command).toBe('LED_OFF');
     });
 
     test('tra 500 khi MQTT khong ket noi', async () => {

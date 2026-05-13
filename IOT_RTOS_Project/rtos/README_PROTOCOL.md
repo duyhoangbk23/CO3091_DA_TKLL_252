@@ -15,7 +15,6 @@ JSON payload:
   "device_id": "esp32_device",
   "temperature": 25.5,
   "humidity": 60.0,
-  "air_quality": 200,
   "alert_level": 0,
   "timestamp_ms": 170000
 }
@@ -24,7 +23,6 @@ JSON payload:
 Nguon du lieu:
 - `temperature`: DHT22.
 - `humidity`: DHT22.
-- `air_quality`: MQ-135 ADC.
 - `alert_level`: do `vTaskDataProcess` tinh theo nguong trong `config.h`.
 - `timestamp_ms`: `esp_timer_get_time() / 1000`.
 - `device_id`: macro `DEVICE_ID` trong `config.h`.

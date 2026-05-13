@@ -9,7 +9,6 @@ let latestData = {
     pm25: 0,
     co2: 0,
     voc: 0,
-    air_quality: 0,
     alert_level: 0,
     timestamp_ms: 0,
     received_at: null,
@@ -31,7 +30,6 @@ async function handleNewSensorData(data) {
         const pm25 = parseInt(data.pm25, 10) || 0;
         const co2 = parseInt(data.co2, 10) || 0;
         const voc = parseInt(data.voc, 10) || 0;
-        const airQ = parseInt(data.air_quality, 10) || 0;
         latestData = {
             device_id: data.device_id || 'esp32_device',
             temperature: parseFloat(data.temperature),
@@ -39,7 +37,6 @@ async function handleNewSensorData(data) {
             pm25,
             co2,
             voc,
-            air_quality: airQ,
             alert_level: parseInt(data.alert_level, 10) || 0,
             timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
             received_at: new Date().toISOString(),
@@ -56,7 +53,6 @@ async function handleNewSensorData(data) {
             pm25: latestData.pm25,
             co2: latestData.co2,
             voc: latestData.voc,
-            air_quality: latestData.air_quality,
             alert_level: latestData.alert_level,
             timestamp_ms: latestData.timestamp_ms
         });

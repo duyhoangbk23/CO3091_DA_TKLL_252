@@ -75,7 +75,7 @@ beforeEach(() => {
     _published.length = 0;
     setDb(null);
     setMqtt(null);
-    setLatestData({ device_id: 'esp32_device', temperature: 0, humidity: 0, pm25: 0, co2: 0, voc: 0, air_quality: 0, alert_level: 0, timestamp_ms: 0 });
+    setLatestData({ device_id: 'esp32_device', temperature: 0, humidity: 0, pm25: 0, co2: 0, voc: 0, alert_level: 0, timestamp_ms: 0 });
 });
 
 // ================================================================
@@ -90,12 +90,11 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
             expect(d.temperature).toBeCloseTo(27.3, 1);
             expect(d.humidity).toBeCloseTo(68.5, 1);
             expect(d.device_id).toBe('esp32_device');
-            expect(d.air_quality).toBe(210);
             expect(d.alert_level).toBe(0);
             expect(d.timestamp_ms).toBe(1000);
             done();
         };
-        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 27.3, humidity: 68.5, air_quality: 210, alert_level: 0, timestamp_ms: 1000 });
+        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 27.3, humidity: 68.5, alert_level: 0, timestamp_ms: 1000 });
     });
 
     test('2. GET /api/data tra ve du lieu moi nhat tu ESP32', done => {
@@ -105,13 +104,12 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
                 expect(res.status).toBe(200);
                 expect(res.body.data.temperature).toBeCloseTo(30.0, 1);
                 expect(res.body.data.humidity).toBeCloseTo(72.0, 1);
-                expect(res.body.data.air_quality).toBe(300);
                 expect(res.body.data.alert_level).toBe(1);
                 expect(res.body.data.timestamp_ms).toBe(2000);
                 done();
             });
         };
-        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 30.0, humidity: 72.0, air_quality: 300, alert_level: 1, timestamp_ms: 2000 });
+        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 30.0, humidity: 72.0, alert_level: 1, timestamp_ms: 2000 });
     });
 
     test('3. Du lieu tu ESP32 duoc luu vao DB sau khi nhan', done => {
@@ -122,17 +120,17 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
             setLatestData(data);
             await mockDb.query(
                 `INSERT INTO sensor_data (
-                    device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.air_quality, data.alert_level, data.timestamp_ms]
+                    device_id, temperature, humidity, pm25, co2, voc, alert_level, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.alert_level, data.timestamp_ms]
             );
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('sensor_data'),
-                ['esp32_device', 25.5, 60.0, 250, 0, 0, 250, 0, 3000]
+                ['esp32_device', 25.5, 60.0, 250, 0, 0, 0, 3000]
             );
             done();
         };
-        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 25.5, humidity: 60.0, air_quality: 250, alert_level: 0, timestamp_ms: 3000 });
+        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 25.5, humidity: 60.0, pm25: 250, alert_level: 0, timestamp_ms: 3000 });
     });
 
     test('4. Nhieu goi du lieu lien tiep khong mat du lieu', done => {
@@ -151,7 +149,7 @@ describe('Luong du lieu: ESP32 (RTOS) → MQTT → Backend', () => {
         };
 
         for (let i = 0; i < TOTAL; i++) {
-            esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 20 + i, humidity: 60, air_quality: 200 + i, alert_level: 0, timestamp_ms: 4000 + i });
+            esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 20 + i, humidity: 60, pm25: 200 + i, alert_level: 0, timestamp_ms: 4000 + i });
         }
     });
 });
@@ -265,15 +263,15 @@ describe('Canh bao nguong — Mirror RTOS threshold logic', () => {
 
             await mockDb.query(
                 `INSERT INTO sensor_data (
-                    device_id, temperature, humidity, pm25, co2, voc, air_quality, alert_level, timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.air_quality, data.alert_level, data.timestamp_ms]
+                    device_id, temperature, humidity, pm25, co2, voc, alert_level, timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [data.device_id, data.temperature, data.humidity, data.pm25, data.co2, data.voc, data.alert_level, data.timestamp_ms]
             );
             expect(mockDb.query).toHaveBeenCalled();
             done();
         };
 
         // ESP32 da tinh alert_level=2 truoc roi gui len MQTT
-        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 42.0, humidity: 55.0, air_quality: 700, alert_level: 2, timestamp_ms: 9000 });
+        esp32Send('iot/sensor/data', { device_id: 'esp32_device', temperature: 42.0, humidity: 55.0, pm25: 700, alert_level: 2, timestamp_ms: 9000 });
     });
 });

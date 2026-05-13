@@ -1,0 +1,157 @@
+version: '3.8'
+
+services:
+  # MQTT Broker (for ESP32 communication)
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: iot-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker-config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-logs:/mosquitto/log
+    networks:
+      - iot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "$SYS/broker/clients/total"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: iot-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: ${DB_NAME:-iot_database}
+      MYSQL_USER: ${DB_USER:-iot_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./iot_backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./iot_backend/database/migration_001_sensor_rtos_columns.sql:/docker-entrypoint-initdb.d/02-migration.sql:ro
+    networks:
+      - iot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Node.js Backend API
+  backend:
+    build:
+      context: ./iot_backend/backend
+      dockerfile: Dockerfile
+    container_name: iot-backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3001}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-iot_user}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-iot_database}
+      MQTT_SERVER: mosquitto
+      MQTT_PORT: 1883
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+    ports:
+      - "${PORT:-3001}:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    volumes:
+      - ./iot_backend/backend/src:/app/src:ro
+      - ./iot_backend/backend/logs:/app/logs
+      - ./iot_backend/frontend/public:/app/public:ro
+    networks:
+      - iot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PHPMyAdmin (Database Management - Optional)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: iot-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: ${DB_USER:-iot_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - iot-network
+    restart: unless-stopped
+    profiles:
+      - debug  # Only run with: docker-compose --profile debug up
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: iot-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker-config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./iot_backend/frontend/public:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - iot-network
+    restart: unless-stopped
+    profiles:
+      - production  # Only run with: docker-compose --profile production up
+
+networks:
+  iot-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+  mosquitto-data:
+    driver: local
+  mosquitto-logs:
+    driver: local
+
+# Usage:
+#
+# Development (default):
+#   docker-compose up -d
+#   Open http://localhost:3001
+#
+# With Debug Tools:
+#   docker-compose --profile debug up -d
+#   PHPMyAdmin: http://localhost:8080
+#
+# Production:
+#   docker-compose --profile production up -d
+#   Nginx Proxy: http://localhost
+#
+# Stop all:
+#   docker-compose down
+#
+# View logs:
+#   docker-compose logs -f backend
+#   docker-compose logs -f mysql
+#   docker-compose logs -f mosquitto
+#
+# Cleanup (remove volumes):
+#   docker-compose down -v

@@ -39,7 +39,7 @@ Trên Windows:
 ipconfig
 ```
 
-Ghi lại **IPv4** của card đang dùng (ví dụ `192.168.1.50`). Giá trị này dùng cho:
+Ghi lại **IPv4** của card đang dùng ('192.168.110.148'). Giá trị này dùng cho:
 
 - `MQTT_SERVER` trong `IOT_RTOS_Project/common/mqtt_topics.h` (sau bước chỉnh firmware).
 - Xác nhận ESP32 và PC **cùng subnet WiFi** (cùng router, không client isolation).
