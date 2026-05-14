@@ -1,61 +1,168 @@
-\section{Thiết kế và hiện thực RTOS}
+\section{Mục tiêu thiết kế RTOS}
 
-Phiên bản firmware tuần tự trong \texttt{hardware/main} giúp kiểm thử nhanh cảm biến và logic IAQ. Phiên bản \texttt{rtos} hiện thực cùng ý tưởng theo mô hình task để tách thời gian đọc cảm biến, xử lý, cảnh báo, truyền MQTT và điều khiển từ xa. Cách tổ chức này giúp một thao tác I/O hoặc kết nối mạng không làm chậm toàn bộ hệ thống.
+Phiên bản \texttt{rtos} chuyển firmware tuần tự thành mô hình nhiều task trên ESP32. Mục tiêu chính là tách các công việc có đặc tính thời gian khác nhau: đọc cảm biến định kỳ, xử lý IAQ ngay khi có mẫu mới, cập nhật LED/cảnh báo, duy trì Wi-Fi/MQTT và xử lý lệnh điều khiển từ dashboard. Nhờ vậy, thao tác mạng hoặc broker mất kết nối không làm dừng phần đọc cảm biến và điều khiển cục bộ.
+
+Firmware RTOS được build bằng PlatformIO với board \texttt{nodemcu-32s}, Arduino framework, \texttt{PubSubClient} cho MQTT và \texttt{ArduinoJson} cho payload. Các cấu hình nhạy cảm như Wi-Fi, MQTT broker và \texttt{DEVICE\_ID} được đặt trong \texttt{include/local\_config.h}; file mẫu là \texttt{include/local\_config.example.h}. Với ESP32 thật, broker phải là IP LAN của máy chạy Mosquitto/Docker, không dùng \texttt{localhost}.
+
+\section{Khởi tạo hệ thống}
+
+Trong \texttt{rtos/src/main.cpp}, \texttt{setup()} thực hiện bốn bước. Đầu tiên, firmware khởi tạo \texttt{SensorHub} với UART1 cho PMS7003, UART2 cho RS485 và ADC cho VOC. Tiếp theo, firmware nạp cấu hình persistent từ NVS namespace \texttt{iaq\_cfg}, gồm trạng thái auto-control và \texttt{ThresholdConfig}. Sau đó \texttt{IaqEvaluator} nhận cấu hình ngưỡng, \texttt{IaqController} khởi tạo chân output và \texttt{init\_system\_resources()} tạo queue, mutex, semaphore. Cuối cùng, các task được tạo bằng \texttt{xTaskCreatePinnedToCore}.
+
+\begin{lstlisting}[style=engineering,caption={Khởi tạo task chính trong bản RTOS}]
+xTaskCreatePinnedToCore(vTaskAlert,       "Task Alert",   2048, NULL, 5, NULL, 1);
+xTaskCreatePinnedToCore(vTaskSensorRead,  "Task Sensor",  4096, NULL, 4, NULL, 1);
+xTaskCreatePinnedToCore(vTaskDataProcess, "Task Process", 4096, NULL, 3, NULL, 1);
+xTaskCreatePinnedToCore(vTaskControl,     "Task Control", 8192, NULL, 3, NULL, 1);
+xTaskCreatePinnedToCore(vTaskMQTT,        "Task MQTT",    8192, NULL, 1, NULL, 0);
+\end{lstlisting}
+
+Cách pin task hiện tại đặt phần đọc cảm biến, xử lý và điều khiển ở core 1, còn MQTT ở core 0 với ưu tiên thấp hơn. Điều này phù hợp với nguyên tắc ưu tiên phản ứng cục bộ: task mạng có thể retry kết nối mà không cạnh tranh trực tiếp với đường xử lý IAQ.
+
+\section{Tài nguyên đồng bộ}
+
+Các tài nguyên FreeRTOS được tạo tập trung trong \texttt{rtos/src/global.cpp}. Dữ liệu cảm biến đi qua queue, trạng thái mới nhất được bảo vệ bằng mutex, còn task cảnh báo được đánh thức bằng counting semaphore khi mức cảnh báo thay đổi.
 
 \begin{table}[H]
     \centering
-    \caption{Các task RTOS chính}
+    \caption{Tài nguyên RTOS chính}
     \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
         \toprule
-        Task & Chu kỳ/ưu tiên & Chức năng thiết kế \\
+        Tài nguyên & Kích thước/cơ chế & Vai trò \\
         \midrule
-        \texttt{vTaskSensorRead} & 2 s, ưu tiên 4 & Đọc cảm biến, chuyển sang \texttt{SensorData\_t}, gửi vào queue \\
-        \texttt{vTaskDataProcess} & Theo dữ liệu đến, ưu tiên 3 & Đánh giá IAQ, tính \texttt{alert\_level}, cập nhật trạng thái mới nhất \\
-        \texttt{vTaskAlert} & 100--500 ms, ưu tiên 5 & Áp dụng \texttt{IaqState} ra LED cảnh báo/thiết bị mô phỏng \\
-        \texttt{vTaskMQTT} & 2 s, ưu tiên 1 & Kết nối Wi-Fi/MQTT, publish telemetry, nhận command \\
-        \texttt{vTaskControl} & Theo command đến, ưu tiên 3 & Xử lý auto/manual mode, device command và threshold command \\
+        \texttt{xSensorQueue} & 5 phần tử \texttt{SensorData\_t} & Truyền dữ liệu đã chuẩn hóa từ task đọc cảm biến sang task xử lý \\
+        \texttt{xControlQueue} & 5 payload, mỗi payload 512 byte & Truyền lệnh MQTT raw/JSON từ callback mạng sang task điều khiển \\
+        \texttt{xDataMutex} & Mutex & Bảo vệ \texttt{g\_LatestData}, \texttt{g\_iaq} và trạng thái runtime khi nhiều task cùng truy cập \\
+        \texttt{xAlertSem} & Counting semaphore, tối đa 10 & Báo \texttt{vTaskAlert} cập nhật output sớm khi có cảnh báo \\
+        \texttt{SnapshotStore} & Critical section & Lưu \texttt{SensorSample} mới nhất ở tầng firmware/phần cứng \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Các tài nguyên RTOS chính gồm \texttt{xSensorQueue} để truyền dữ liệu từ task đọc cảm biến sang task xử lý, \texttt{xControlQueue} để truyền lệnh MQTT sang task điều khiển, \texttt{xDataMutex} để bảo vệ trạng thái mới nhất và \texttt{xAlertSem} để báo task cảnh báo cập nhật output nhanh. \texttt{SnapshotStore} vẫn được dùng như bộ nhớ mẫu đo mới nhất ở tầng firmware, có critical section để tránh đọc/ghi không nhất quán.
+Queue cảm biến dùng chế độ gửi không block. Nếu task xử lý không theo kịp và queue đầy, firmware in thông báo \texttt{[Sensor] Queue full!} thay vì làm task đọc cảm biến bị treo. Với control queue, MQTT callback cũng gửi không block để callback mạng ngắn gọn; phần phân tích JSON và điều khiển được dời sang \texttt{vTaskControl}.
 
-\section{Thiết kế MQTT}
-
-Theo contract chung, hệ thống dùng các topic:
-
-\begin{itemize}[leftmargin=2em]
-    \item \texttt{iot/sensor/data}: ESP32 publish telemetry lên backend.
-    \item \texttt{iot/device/status}: ESP32 publish ACK hoặc trạng thái sau khi xử lý lệnh.
-    \item \texttt{iot/device/control}: backend publish lệnh điều khiển xuống ESP32.
-\end{itemize}
-
-Payload telemetry chứa \texttt{device\_id}, nhiệt độ, độ ẩm, PM2.5, CO2, VOC, \texttt{alert\_level}, timestamp từ ESP32, uptime, trạng thái auto-control, phiên bản cấu hình, tình trạng cảm biến, cờ cảnh báo và trạng thái thiết bị. Backend đọc cùng contract này từ \texttt{common/data\_format.json}, nhờ đó RTOS, database và dashboard dùng chung một mô hình dữ liệu.
-
-Luồng control hỗ trợ cả lệnh legacy như \texttt{LED\_ON}, \texttt{HEPA\_ON} và lệnh có cấu trúc như \texttt{SET\_AUTO}, \texttt{SET\_DEVICE}, \texttt{GET\_THRESHOLDS}, \texttt{SET\_THRESHOLDS}. Khi auto-control đang bật, firmware từ chối manual device command để tránh override quyết định an toàn cục bộ.
-
-\section{Chính sách điều khiển tự động và thủ công}
-
-Hệ thống hỗ trợ hai chế độ điều khiển. Ở chế độ tự động, \texttt{IaqEvaluator} quyết định thiết bị nào cần bật dựa trên trạng thái IAQ và nguyên nhân gây cảnh báo. Ví dụ CO2 hoặc VOC kích hoạt thông gió, PM kích hoạt HEPA, VOC kích hoạt lọc than, nhiệt độ kích hoạt điều hòa và độ ẩm thấp kích hoạt tạo ẩm.
-
-Ở chế độ thủ công, dashboard có thể gửi lệnh điều khiển từng thiết bị thông qua backend và MQTT. Tuy nhiên, firmware chỉ chấp nhận các lệnh này khi auto-control đã được tắt. Cách làm này tránh tình huống người dùng vô tình tắt thiết bị xử lý trong khi môi trường vẫn đang ở trạng thái cần can thiệp hoặc cảnh báo.
+\section{Phân rã task}
 
 \begin{table}[H]
     \centering
-    \caption{Chính sách auto/manual}
-    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+    \caption{Các task RTOS trong firmware}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l l X}
         \toprule
-        Chế độ & Nguồn quyết định & Chính sách an toàn \\
+        Task & Chu kỳ/sự kiện & Ưu tiên & Chức năng \\
         \midrule
-        Auto & \texttt{IaqEvaluator} và ngưỡng IAQ & Firmware tự điều khiển theo nguyên nhân, ưu tiên trạng thái cục bộ \\
-        Manual & Dashboard qua API/MQTT & Chỉ áp dụng khi auto-control tắt; lệnh được validate và ghi log \\
-        Threshold update & Dashboard gửi cấu hình mới & Firmware kiểm tra hợp lệ, lưu cấu hình và tăng \texttt{config\_version} \\
+        \texttt{vTaskAlert} & Semaphore hoặc 500 ms & 5 & Đọc \texttt{g\_iaq} dưới mutex và áp dụng output LED/thiết bị mô phỏng \\
+        \texttt{vTaskSensorRead} & 2000 ms & 4 & Đọc \texttt{SensorHub}, publish \texttt{SnapshotStore}, map sang \texttt{SensorData\_t}, gửi vào \texttt{xSensorQueue} \\
+        \texttt{vTaskDataProcess} & Khi queue có dữ liệu & 3 & Đổi \texttt{SensorData\_t} về \texttt{SensorSample}, gọi \texttt{IaqEvaluator}, tính \texttt{alert\_level}, cập nhật \texttt{g\_LatestData} và \texttt{g\_iaq} \\
+        \texttt{vTaskControl} & Khi có command & 3 & Xử lý auto/manual mode, command thiết bị, command threshold, lưu NVS và publish ACK \\
+        \texttt{vTaskMQTT} & 2000 ms và callback MQTT & 1 & Kết nối Wi-Fi/MQTT, subscribe control topic, publish telemetry JSON \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Sau khi xử lý lệnh, ESP32 có thể publish ACK hoặc trạng thái lên \texttt{iot/device/status}. ACK này giúp backend và dashboard biết lệnh đã được chấp nhận, bị từ chối hay gặp lỗi cấu hình.
+\texttt{vTaskDataProcess} là điểm nối giữa dữ liệu cảm biến và quyết định điều khiển. Task này tính \texttt{alert\_level=2} nếu có bất kỳ cờ \texttt{alarmCO2}, \texttt{alarmPM}, \texttt{alarmVOC}, \texttt{alarmTemp} hoặc \texttt{alarmRH}; tính \texttt{alert\_level=1} nếu chưa alarm nhưng có thiết bị xử lý đang được yêu cầu bật. Khi auto-control bị tắt, task vẫn đánh giá cảnh báo nhưng giữ lại trạng thái thiết bị manual trong \texttt{g\_iaq}.
 
-\section{Cơ chế vận hành khi mất kết nối}
+\section{Luồng telemetry từ ESP32 lên backend}
 
-ESP32 không nên phụ thuộc hoàn toàn vào server. Khi MQTT hoặc Wi-Fi mất kết nối, thiết bị vẫn đọc cảm biến, đánh giá IAQ, điều khiển cục bộ và ghi log SPIFFS. Khi kết nối khôi phục, hệ thống có thể tiếp tục publish dữ liệu realtime; phần đồng bộ log lịch sử là hướng mở rộng.
+Task đọc cảm biến tạo \texttt{SensorData\_t} từ \texttt{SensorSample}. Các quy ước missing được giữ nhất quán với contract: nhiệt độ/độ ẩm lỗi thành \texttt{NAN}, PM2.5 lỗi thành \texttt{-1}, CO2 lỗi thành \texttt{0xFFFF}. Timestamp dùng \texttt{esp\_timer\_get\_time()} để có mốc microsecond kể từ lúc boot.
+
+\begin{lstlisting}[style=engineering,caption={Mapping dữ liệu trước khi đưa vào queue}]
+data.temperature = hw.ok_sht ? hw.temp_c_x10 / 10.0f : NAN;
+data.humidity    = hw.ok_sht ? hw.hum_rh_x10 / 10.0f : NAN;
+data.pm25        = hw.ok_pms ? hw.pm25_atm : -1;
+data.co2         = hw.ok_co2 ? hw.co2_ppm : 0xFFFF;
+data.voc         = hw.voc_avg_x10 / 10;
+data.timestamp   = esp_timer_get_time();
+\end{lstlisting}
+
+\texttt{vTaskMQTT} lấy \texttt{g\_LatestData} dưới \texttt{xDataMutex}, tạo JSON bằng \texttt{ArduinoJson} rồi publish lên \texttt{iot/sensor/data}. Payload không chỉ chứa năm chỉ số đo chính mà còn chứa trạng thái hệ thống, giúp backend và dashboard hiểu được chất lượng dữ liệu cũng như quyết định điều khiển hiện tại.
+
+\begin{table}[H]
+    \centering
+    \caption{Nhóm trường telemetry chính}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+        \toprule
+        Nhóm field & Ý nghĩa \\
+        \midrule
+        \texttt{device\_id}, \texttt{timestamp}, \texttt{uptime\_ms} & Định danh thiết bị, thời điểm đo và thời gian chạy \\
+        \texttt{temperature}, \texttt{humidity}, \texttt{pm25}, \texttt{co2}, \texttt{voc} & Dữ liệu đo đã chuẩn hóa theo contract chung \\
+        \texttt{alert\_level} & Mức tổng hợp: \texttt{0=OK}, \texttt{1=WARN}, \texttt{2=CRITICAL} \\
+        \texttt{sensor\_health} & Trạng thái từng nhóm cảm biến: CO2, PM, VOC, nhiệt độ, độ ẩm \\
+        \texttt{alerts} & Cờ cảnh báo theo nguyên nhân \texttt{co2}, \texttt{pm}, \texttt{voc}, \texttt{temp}, \texttt{rh} \\
+        \texttt{devices} & Trạng thái thiết bị xử lý: \texttt{hepa}, \texttt{vent}, \texttt{carbon}, \texttt{ac}, \texttt{humid} \\
+        \texttt{auto\_control\_enabled}, \texttt{config\_version} & Trạng thái điều khiển tự động và phiên bản cấu hình ngưỡng \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{MQTT contract và tích hợp IoT}
+
+Contract MQTT nằm ở \texttt{common/data\_format.json} và \texttt{common/mqtt\_topics.h}. Backend đọc cùng contract qua \texttt{src/config/mqttContract.js}, vì vậy firmware, MQTT service, database và dashboard dùng cùng tên topic và cùng cấu trúc payload.
+
+\begin{table}[H]
+    \centering
+    \caption{Topic MQTT chính}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
+        \toprule
+        Topic & Hướng & Vai trò \\
+        \midrule
+        \texttt{iot/sensor/data} & ESP32 \(\rightarrow\) backend & Telemetry định kỳ từ \texttt{vTaskMQTT} \\
+        \texttt{iot/device/status} & ESP32 \(\rightarrow\) backend & ACK hoặc status sau khi xử lý command \\
+        \texttt{iot/device/control} & Backend \(\rightarrow\) ESP32 & Lệnh điều khiển từ API/dashboard \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Ở phía backend, service MQTT subscribe cả \texttt{iot/sensor/data} và \texttt{iot/device/status}. Hàm mapper chuẩn hóa timestamp, sentinel, \texttt{sensor\_health}, \texttt{alerts}, \texttt{devices}, ACK và threshold trước khi cập nhật latest cache hoặc ghi database. Nhờ đó dashboard có thể gọi \texttt{GET /api/data} để xem trạng thái realtime mà không cần đọc trực tiếp từ broker.
+
+\section{Luồng điều khiển từ dashboard xuống ESP32}
+
+Luồng điều khiển đi theo chiều ngược lại: dashboard gọi REST API, backend validate request và publish JSON xuống \texttt{iot/device/control}; callback MQTT trên ESP32 copy payload vào \texttt{xControlQueue}; \texttt{vTaskControl} nhận payload, parse JSON và thực thi.
+
+\begin{table}[H]
+    \centering
+    \caption{Nhóm lệnh điều khiển được firmware hỗ trợ}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+        \toprule
+        Lệnh & Vai trò \\
+        \midrule
+        \texttt{GET\_STATUS}, \texttt{GET\_AUTO} & Trả về trạng thái runtime hiện tại \\
+        \texttt{SET\_AUTO} & Bật/tắt chế độ auto-control và lưu vào NVS \\
+        \texttt{SET\_DEVICE} & Điều khiển từng thiết bị khi firmware đang ở manual mode \\
+        \texttt{GET\_THRESHOLDS} & Publish cấu hình ngưỡng hiện tại lên status topic \\
+        \texttt{SET\_THRESHOLDS} & Cập nhật ngưỡng, kiểm tra hysteresis, lưu NVS và tăng \texttt{config\_version} \\
+        \texttt{RESET\_THRESHOLDS} & Khôi phục ngưỡng mặc định \\
+        \texttt{REBOOT} & Publish ACK rồi khởi động lại ESP32 \\
+        \texttt{LED\_ON/OFF}, \texttt{HEPA\_ON/OFF}, \texttt{VENT\_ON/OFF}, \texttt{CARBON\_ON/OFF}, \texttt{AC\_ON/OFF}, \texttt{HUMID\_ON/OFF} & Nhóm lệnh legacy/manual để kiểm thử và tương thích với API cũ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Chính sách an toàn nằm ở firmware. Khi \texttt{auto\_control\_enabled} đang bật, các lệnh manual điều khiển thiết bị bị từ chối và ESP32 publish ACK lỗi với thông điệp tương ứng. Điều này giúp dashboard không vô tình tắt các thiết bị xử lý đang được thuật toán IAQ yêu cầu bật để bảo vệ môi trường cục bộ.
+
+\section{Cấu hình ngưỡng và lưu bền vững}
+
+Ngưỡng điều khiển nằm trong \texttt{ThresholdConfig}. Các cặp \texttt{on/off} tạo hysteresis cho CO2, PM, VOC, nhiệt độ và độ ẩm. Hàm \texttt{validateThresholdConfig()} kiểm tra quan hệ ngưỡng trước khi chấp nhận cấu hình mới, ví dụ ngưỡng bật phải lớn hơn ngưỡng tắt đối với đại lượng tăng cao, còn ngưỡng độ ẩm thấp phải nhỏ hơn ngưỡng hồi phục.
+
+\begin{table}[H]
+    \centering
+    \caption{Ngưỡng mặc định trong \texttt{ThresholdConfig}}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
+        \toprule
+        Đại lượng & Cặp ngưỡng mặc định & Ý nghĩa \\
+        \midrule
+        CO2 & \texttt{1000/950} ppm & Bật xử lý khi CO2 cao, tắt sau khi giảm dưới ngưỡng hồi phục \\
+        PM2.5 & \texttt{35/30} \(\mu g/m^3\) & Điều khiển HEPA theo bụi mịn \\
+        VOC & \texttt{500/450} & Điều khiển thông gió/lọc theo VOC raw/index \\
+        Nhiệt độ & \texttt{32.0/31.0} \(^{\circ}C\) & Điều khiển AC mô phỏng \\
+        Độ ẩm thấp & \texttt{30.0/35.0}\%RH & Bật/tắt tạo ẩm \\
+        Độ ẩm cao & \texttt{65.0/60.0}\%RH & Bật/tắt thông gió khi quá ẩm \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Khi nhận \texttt{SET\_THRESHOLDS}, firmware tạo cấu hình tạm, validate, cập nhật \texttt{IaqEvaluator}, lưu vào NVS bằng \texttt{Preferences} và publish lại cấu hình nếu thành công. Nếu lưu thất bại, firmware rollback về cấu hình trước đó. Cơ chế này giúp cấu hình từ dashboard không mất sau khi ESP32 reboot.
+
+\section{Vận hành khi mất kết nối}
+
+Thiết kế hiện tại không phụ thuộc hoàn toàn vào server. Nếu Wi-Fi hoặc MQTT mất kết nối, \texttt{vTaskSensorRead}, \texttt{vTaskDataProcess}, \texttt{vTaskAlert} và \texttt{vTaskControl} vẫn chạy theo tài nguyên cục bộ. \texttt{vTaskMQTT} định kỳ thử kết nối lại Wi-Fi/MQTT, subscribe lại control topic khi kết nối thành công và tiếp tục publish telemetry mới nhất.
+
+Điểm giới hạn hiện tại là bản RTOS chưa có hàng đợi lưu lịch sử offline để đẩy bù dữ liệu cũ sau khi mạng phục hồi. Phần ghi CSV đã có ở firmware tuần tự qua \texttt{CsvLogger}; nếu cần hoàn thiện vận hành dài hạn, có thể đưa logger hoặc một ring buffer SPIFFS/NVS vào bản RTOS để đồng bộ lại các mẫu bị mất trong thời gian broker không khả dụng.

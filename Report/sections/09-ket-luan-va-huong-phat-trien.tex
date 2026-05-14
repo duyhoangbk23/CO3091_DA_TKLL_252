@@ -1,25 +1,37 @@
-Báo cáo đã tổ chức lại dự án theo đúng các phần của một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí: thiết kế phần cứng, firmware đọc dữ liệu, RTOS/IoT truyền dữ liệu, server/database và dashboard web. Source hiện tại đã có prototype nhiều tầng gồm firmware tuần tự để kiểm thử cảm biến, firmware RTOS có task và MQTT, backend Node.js/Express, schema MySQL, dashboard tĩnh và một số kiểm thử backend.
+\section{Kết luận}
 
-Các kết quả chính đạt được gồm mô hình cảm biến đa giao thức, mẫu dữ liệu thống nhất, đánh giá IAQ theo trạng thái, điều khiển theo nguyên nhân, tổ chức task RTOS, contract MQTT/JSON, API backend, lưu trữ MySQL và giao diện dashboard/control/analytics. Các phần này cho thấy thiết kế không chỉ dừng ở source firmware đơn lẻ mà đã hình thành pipeline IoT nhiều tầng.
+Đề tài đã xây dựng được một prototype hệ thống IoT RTOS phục vụ giám sát và điều chỉnh chất lượng không khí trong nhà. Hệ thống được tổ chức theo nhiều tầng rõ ràng: phần cứng cảm biến, firmware đọc dữ liệu, firmware RTOS trên ESP32, truyền thông MQTT, backend Node.js/Express, cơ sở dữ liệu MySQL và dashboard web. Cách phân tầng này giúp mỗi khối có trách nhiệm riêng, dễ kiểm thử từng phần và có thể mở rộng về sau.
 
-Hướng phát triển tiếp theo là ổn định triển khai end-to-end với ESP32 thật, Mosquitto, backend, MySQL và dashboard; bổ sung test tự động cho pipeline phần cứng thật; hiệu chuẩn ngưỡng IAQ và VOC theo dữ liệu thực nghiệm; bổ sung bảo mật MQTT/API; và đánh giá hệ thống trong phòng học hoặc phòng làm việc trong thời gian dài.
+Ở tầng thiết bị, firmware đã đọc được các nhóm đại lượng chính của IAQ gồm bụi mịn PMS7003, CO2 qua RS485 Modbus, nhiệt độ/độ ẩm SHTC3 qua RS485 Modbus và VOC analog. Dữ liệu được gom về cấu trúc \texttt{SensorSample}, có sentinel và cờ hợp lệ để tránh dùng nhầm dữ liệu lỗi. Thuật toán \texttt{IaqEvaluator} phân vùng trạng thái thành \texttt{SAFE}, \texttt{INTERVENE} và \texttt{ALARM}; sau đó \texttt{IaqController} ánh xạ trạng thái này ra các LED/thiết bị mô phỏng như HEPA, thông gió, lọc than, điều hòa và tạo ẩm.
 
-\section{Hướng triển khai thực nghiệm}
+Ở tầng RTOS và IoT, bản firmware \texttt{rtos} đã tách hệ thống thành các task chuyên trách: đọc cảm biến, xử lý dữ liệu, cảnh báo, MQTT và điều khiển. Queue, mutex và semaphore được dùng để truyền dữ liệu, bảo vệ trạng thái dùng chung và phản ứng nhanh khi có cảnh báo. Thiết kế này giúp phần điều khiển cục bộ vẫn hoạt động ngay cả khi Wi-Fi hoặc MQTT tạm thời không ổn định.
 
-Để chuyển prototype hiện tại thành một thử nghiệm hệ thống đầy đủ, nhóm có thể triển khai theo các bước sau:
+Ở tầng server, backend nhận telemetry qua MQTT, chuẩn hóa payload theo contract chung, lưu dữ liệu lịch sử vào MySQL và cung cấp REST API cho dashboard. Dashboard web cho phép quan sát realtime, xem lịch sử/phân tích và gửi lệnh điều khiển. Luồng điều khiển ngược từ dashboard xuống ESP32 thông qua API và topic MQTT \texttt{iot/device/control} đã được thiết kế để hỗ trợ cả lệnh legacy và lệnh có cấu trúc như \texttt{SET\_AUTO}, \texttt{SET\_DEVICE}, \texttt{GET\_THRESHOLDS} và \texttt{SET\_THRESHOLDS}.
 
-\begin{enumerate}[leftmargin=2em]
-    \item Chạy Docker stack gồm Mosquitto, MySQL, backend và frontend trên cùng một máy trong mạng LAN.
-    \item Cấu hình \texttt{local\_config.h} cho ESP32 với SSID, mật khẩu Wi-Fi, IP broker và \texttt{DEVICE\_ID}.
-    \item Flash firmware RTOS và kiểm tra ESP32 publish telemetry lên \texttt{iot/sensor/data}.
-    \item Kiểm tra backend cập nhật \texttt{/api/data}, ghi dữ liệu vào \texttt{sensor\_data} và hiển thị dashboard.
-    \item Gửi lệnh từ control panel, quan sát MQTT command, ACK/status và LED/thiết bị mô phỏng.
-    \item So sánh log cục bộ từ firmware tuần tự hoặc CSV với dữ liệu đã lưu trong MySQL để đối chiếu tính nhất quán.
-    \item Thu dữ liệu trong phòng thật theo nhiều khung giờ để đánh giá ngưỡng, độ trễ và độ ổn định.
-\end{enumerate}
+Nhìn chung, kết quả đạt được chứng minh tính khả thi của kiến trúc \texttt{Sensor -> ESP32/RTOS -> MQTT -> Backend -> Database -> Dashboard}. Hệ thống không chỉ dừng ở một sketch đọc cảm biến đơn lẻ mà đã hình thành một pipeline IoT tương đối đầy đủ, có dữ liệu thống nhất, điều khiển cục bộ, điều khiển từ xa và lưu trữ lịch sử.
 
-Kết quả thực nghiệm nên được dùng để hiệu chuẩn lại ngưỡng CO2, PM2.5, VOC, nhiệt độ và độ ẩm. Đặc biệt, VOC cần được hiệu chuẩn trước khi dùng như một chỉ số định lượng.
+\section{Giới hạn hiện tại}
 
-\section{Giới hạn của prototype}
+Prototype hiện tại vẫn còn một số giới hạn cần được nhìn nhận rõ. Các LED xanh/đỏ đang đóng vai trò mô phỏng thiết bị chấp hành và cảnh báo, chưa điều khiển tải thật như quạt, máy lọc không khí, relay hoặc module công suất. Vì vậy phần an toàn điện, cách ly tải và bảo vệ quá dòng chưa nằm trong phạm vi hoàn thiện của phiên bản này.
 
-Prototype hiện tại vẫn có một số giới hạn cần nêu rõ. LED xanh/đỏ đang mô phỏng thiết bị chấp hành và cảnh báo, chưa điều khiển tải thật. VOC đang là raw ADC hoặc index tương đối, chưa được hiệu chuẩn thành chỉ số chuẩn. Một số kiểm thử backend hiện dùng MQTT mock, vì vậy chưa xác nhận đầy đủ các yếu tố vật lý như Wi-Fi, broker thật, wiring cảm biến và độ trễ thiết bị. Hệ thống cũng chưa bổ sung xác thực/bảo mật cho MQTT và API. Những giới hạn này không làm mất giá trị thiết kế, nhưng là cơ sở để xác định bước triển khai thực nghiệm tiếp theo.
+Chỉ số VOC hiện đang được xử lý dưới dạng ADC raw hoặc index tương đối, chưa được hiệu chuẩn thành đại lượng chuẩn theo datasheet hoặc thiết bị đo tham chiếu. Các ngưỡng IAQ trong source phù hợp cho prototype và demo, nhưng chưa thể xem là ngưỡng vận hành cuối cùng cho môi trường thực tế nếu chưa có quá trình đo đạc, đối chiếu và hiệu chuẩn.
+
+Về kiểm thử, repository đã có các sketch test từng cảm biến và test backend/MQTT ở mức phần mềm. Tuy nhiên, hệ thống vẫn cần kiểm thử end-to-end với ESP32 thật, broker thật, Wi-Fi thật, database và dashboard chạy đồng thời trong thời gian dài. Đây là bước cần thiết để đánh giá độ trễ, độ ổn định kết nối, tỷ lệ mẫu đo hợp lệ và hành vi khi mất mạng.
+
+Về bảo mật, MQTT và API hiện chủ yếu phục vụ môi trường lab/demo. Khi triển khai ngoài mạng nội bộ, cần bổ sung xác thực, phân quyền, mã hóa kết nối và cơ chế quản lý thiết bị để tránh lệnh điều khiển không hợp lệ hoặc truy cập trái phép.
+
+\section{Hướng phát triển}
+
+Hướng phát triển đầu tiên là hoàn thiện triển khai phần cứng thật. Các LED mô phỏng có thể được thay bằng relay, MOSFET hoặc module điều khiển phù hợp cho quạt thông gió, máy lọc HEPA, lọc than, điều hòa hoặc máy tạo ẩm. Khi chuyển sang tải thật, thiết kế cần bổ sung cách ly, cầu chì, nguồn riêng cho tải và vỏ bảo vệ an toàn.
+
+Hướng thứ hai là hiệu chuẩn cảm biến và ngưỡng IAQ. Nhóm cần thu dữ liệu trong nhiều điều kiện phòng khác nhau, so sánh với thiết bị đo tham chiếu và điều chỉnh lại threshold cho CO2, PM2.5, VOC, nhiệt độ và độ ẩm. Riêng VOC nên được chuyển từ raw ADC sang chỉ số có ý nghĩa hơn sau khi xác định đặc tuyến cảm biến và điều kiện làm nóng ổn định.
+
+Hướng thứ ba là tăng độ tin cậy của firmware RTOS. Có thể bổ sung watchdog, thống kê heap/stack từng task, cơ chế lưu log offline vào SPIFFS/NVS khi mất MQTT, và đồng bộ bù dữ liệu khi kết nối phục hồi. Các queue cũng có thể được giám sát để phát hiện tình trạng quá tải hoặc mất mẫu.
+
+Hướng thứ tư là mở rộng backend và dashboard. Backend có thể bổ sung WebSocket để cập nhật realtime thay vì chỉ polling API, thêm biểu đồ dài hạn, thống kê theo ngày/tuần, cảnh báo qua email hoặc ứng dụng nhắn tin, và quản lý nhiều thiết bị bằng \texttt{device\_id}. Dashboard cũng có thể hiển thị rõ hơn trạng thái sensor health, ACK command và phiên bản cấu hình đang chạy trên ESP32.
+
+Hướng thứ năm là bổ sung bảo mật và vận hành. MQTT nên hỗ trợ username/password hoặc TLS, API nên có xác thực người dùng, rate limit và audit log đầy đủ. Với triển khai nhiều thiết bị, cần có cơ chế quản lý cấu hình, cập nhật firmware và phân quyền điều khiển theo vai trò.
+
+\section{Tổng kết}
+
+Đề tài đã tạo được nền tảng kỹ thuật đủ tốt để tiếp tục phát triển thành một hệ thống IAQ thực tế. Điểm mạnh của thiết kế là tách rõ phần đọc cảm biến, đánh giá IAQ, điều khiển cục bộ và truyền thông IoT; nhờ đó hệ thống có thể hoạt động độc lập tại thiết bị nhưng vẫn mở rộng được sang dashboard và server. Những hạn chế còn lại chủ yếu nằm ở giai đoạn triển khai thực nghiệm, hiệu chuẩn và bảo mật, là các bước tự nhiên cần hoàn thiện sau khi kiến trúc cốt lõi đã được chứng minh.

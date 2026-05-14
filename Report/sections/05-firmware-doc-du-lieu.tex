@@ -1,63 +1,127 @@
-\section{Mẫu dữ liệu thống nhất}
+\section{Vai trò của firmware đọc dữ liệu}
 
-Firmware dùng \texttt{SensorSample} làm cấu trúc dữ liệu trung tâm ở tầng đọc cảm biến. Mẫu đo chứa thời gian \texttt{ms}, các chỉ số PM, nhiệt độ x10, độ ẩm x10, CO2 ppm, VOC raw, VOC trung bình và cờ hợp lệ cho từng nhóm cảm biến. Các giá trị thiếu được mã hóa bằng sentinel như \texttt{-1}, \texttt{INT16\_MIN} hoặc \texttt{0xFFFF}.
+Firmware ở nhánh \texttt{hardware/main} là phiên bản chạy tuần tự trên Arduino framework, dùng để kiểm chứng phần cứng, driver cảm biến, thuật toán IAQ và ghi log cục bộ trước khi ghép vào bản RTOS. Các lớp đọc cảm biến và xử lý IAQ trong nhánh này được tái sử dụng gần như trực tiếp trong \texttt{rtos/lib/iaq\_hardware/src}, nhờ đó bản RTOS không phải viết lại logic phần cứng mà chỉ thay cách lập lịch và truyền thông.
 
-Trong repository hiện có hai cách tổ chức firmware. Nhánh \texttt{hardware/main} chạy tuần tự trong Arduino \texttt{loop()} và phù hợp cho kiểm thử cảm biến, log CSV và quan sát hành vi cục bộ. Nhánh \texttt{rtos} tái sử dụng các khối phần cứng/IAQ nhưng bọc chúng trong mô hình task, queue và MQTT để tích hợp với backend.
+Luồng xử lý cục bộ được chia thành ba lớp. Lớp driver đọc dữ liệu thô từ PMS7003, RS485 Modbus và ADC. Lớp \texttt{SensorHub} gom các nguồn đo thành một mẫu thống nhất. Lớp IAQ gồm \texttt{IaqEvaluator} và \texttt{IaqController}, chịu trách nhiệm phân vùng chất lượng không khí và ánh xạ quyết định ra LED/thiết bị mô phỏng.
+
+\begin{center}
+\texttt{Sensor drivers -> SensorHub -> SensorSample -> IaqEvaluator -> IaqController/CsvLogger}
+\end{center}
+
+\section{Mô hình mẫu đo thống nhất}
+
+Dữ liệu trung tâm của firmware là \texttt{SensorSample}. Cấu trúc này dùng fixed-point x10 cho nhiệt độ, độ ẩm và giá trị VOC trung bình để giảm phụ thuộc vào số thực ở tầng driver. Các cảm biến có thể mất kết nối hoặc timeout, vì vậy mỗi nhóm dữ liệu đều có sentinel và cờ hợp lệ riêng. Cách biểu diễn này giúp tầng đánh giá IAQ phân biệt rõ dữ liệu thật với dữ liệu thiếu.
 
 \begin{table}[H]
     \centering
-    \caption{Mô hình xử lý dữ liệu tại thiết bị}
-    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+    \caption{Các trường chính của \texttt{SensorSample}}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
         \toprule
-        Khối & Vai trò thiết kế \\
+        Nhóm dữ liệu & Trường chính & Quy ước trong firmware \\
         \midrule
-        Driver cảm biến & Đọc PMS7003, Modbus CO2/SHTC3 và VOC analog, kiểm tra lỗi giao thức \\
-        \texttt{SensorHub} & Gom nhiều nguồn đo thành một mẫu thống nhất \\
-        \texttt{SensorSample} & Chuẩn hóa đơn vị, sentinel và cờ hợp lệ \\
-        \texttt{IaqEvaluator} & Phân vùng IAQ, áp dụng hysteresis và hold-time \\
-        \texttt{IaqController} & Ánh xạ quyết định IAQ ra LED/thiết bị mô phỏng \\
-        \texttt{CsvLogger} & Ghi log cục bộ để kiểm thử khi chưa cần backend \\
+        Thời gian & \texttt{ms} & Timestamp theo \texttt{millis()} tại thời điểm đọc mẫu \\
+        Bụi mịn & \texttt{pm1\_atm}, \texttt{pm25\_atm}, \texttt{pm10\_atm} & Giá trị \(\mu g/m^3\); \texttt{-1} nếu chưa có dữ liệu hợp lệ \\
+        Nhiệt độ & \texttt{temp\_c\_x10} & Nhiệt độ nhân 10; \texttt{INT16\_MIN} biểu diễn missing \\
+        Độ ẩm & \texttt{hum\_rh\_x10} & Độ ẩm nhân 10; \texttt{0xFFFF} biểu diễn missing \\
+        CO2 & \texttt{co2\_ppm} & ppm; \texttt{0xFFFF} biểu diễn missing \\
+        VOC & \texttt{voc\_raw}, \texttt{voc\_avg\_x10} & ADC raw và trung bình trượt nhân 10 \\
+        Cờ hợp lệ & \texttt{ok\_pms}, \texttt{ok\_sht}, \texttt{ok\_co2} & Chỉ bật khi frame/gói Modbus tương ứng đọc thành công \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\begin{lstlisting}[style=engineering,caption={Luồng xử lý chính trong loop}]
-SensorSample s = g_hub.readSample();
-g_store.publish(s);
-
-g_iaq = g_eval.evaluate(s);
-g_ctrl.apply(g_iaq);
-
-printIAQ(s, g_iaq);
-g_csv.logToSpiffs(s);
+\begin{lstlisting}[style=engineering,caption={Mẫu dữ liệu cốt lõi ở firmware}]
+struct SensorSample {
+  uint32_t ms;
+  int16_t  pm25_atm;
+  int16_t  temp_c_x10;
+  uint16_t hum_rh_x10;
+  uint16_t co2_ppm;
+  uint16_t voc_raw;
+  uint16_t voc_avg_x10;
+  bool ok_pms;
+  bool ok_sht;
+  bool ok_co2;
+};
 \end{lstlisting}
 
-\section{Đọc cảm biến}
+\section{Đọc cảm biến và chuẩn hóa dữ liệu}
 
-\texttt{SensorHub} là lớp gom dữ liệu từ các driver. Khi gọi \texttt{readSample()}, hub đọc PMS7003, đọc register CO2, đọc register nhiệt độ/độ ẩm và đọc VOC analog. Nếu một cảm biến không trả dữ liệu đúng, các cờ \texttt{ok\_pms}, \texttt{ok\_co2}, \texttt{ok\_sht} giữ giá trị false để tầng sau không hiểu nhầm dữ liệu lỗi là dữ liệu thật.
-
-\section{Đánh giá IAQ}
-
-\texttt{IaqEvaluator} ánh xạ dữ liệu đo sang \texttt{IaqState}. Mỗi chỉ số có vùng \texttt{SAFE}, \texttt{INTERVENE}, \texttt{ALARM}. Với CO2, PM và VOC, hàm \texttt{eval3} dùng ngưỡng an toàn, ngưỡng cảnh báo và hysteresis. Với nhiệt độ và độ ẩm, firmware có hàm riêng vì trạng thái tốt là nằm trong khoảng vận hành.
-
-Sau khi phân vùng, evaluator sinh yêu cầu điều khiển: CO2/VOC kích hoạt thông gió, PM kích hoạt HEPA, VOC kích hoạt lọc than, nhiệt độ kích hoạt điều hòa, độ ẩm thấp kích hoạt tạo ẩm. Các output dùng hold-time 5000 ms để tránh bật/tắt liên tục.
+\texttt{SensorHub} là điểm gom dữ liệu từ ba loại giao tiếp phần cứng. Hàm \texttt{begin()} khởi tạo UART1 cho PMS7003, UART2 cho RS485 Modbus và ADC1 cho VOC. Hàm \texttt{readSample()} đọc từng cảm biến với timeout riêng; nếu một cảm biến lỗi, mẫu đo vẫn được trả về nhưng cờ hợp lệ của nhóm đó giữ giá trị false.
 
 \begin{table}[H]
     \centering
-    \caption{Mô hình trạng thái IAQ}
-    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+    \caption{Driver cảm biến trong firmware}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l l X}
         \toprule
-        Trạng thái & Ý nghĩa & Hành động thiết kế \\
+        Cảm biến & Giao tiếp & Cách xử lý trong source \\
         \midrule
-        \texttt{SAFE} & Chỉ số nằm trong vùng chấp nhận & Tiếp tục giám sát, không bật thiết bị xử lý \\
-        \texttt{INTERVENE} & Chỉ số bắt đầu xấu hoặc lệch khỏi vùng vận hành & Bật thiết bị xử lý theo nguyên nhân \\
-        \texttt{ALARM} & Chỉ số vượt ngưỡng cảnh báo & Bật xử lý và LED cảnh báo đỏ tương ứng \\
+        PMS7003 & UART1 9600 bps & Tìm header \texttt{0x42 0x4D}, đọc frame 32 byte, kiểm tra checksum, tách PM1.0/PM2.5/PM10 ở cả chế độ standard và atmospheric \\
+        CO2 RS485 & Modbus RTU & Gửi function \texttt{0x03} tới slave ID 1, đọc register \texttt{0x0001}, kiểm tra độ dài response, slave ID, function code và CRC16 \\
+        SHTC3 RS485 & Modbus RTU & Gửi function \texttt{0x03} tới slave ID 2, đọc hai register từ \texttt{0x0000}; register đầu là độ ẩm x10, register sau là nhiệt độ x10 \\
+        VOC analog & ADC1 GPIO34 & Đọc ADC 12-bit, cấu hình attenuation \texttt{ADC\_11db}, dùng buffer vòng 20 mẫu để tính trung bình trượt \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Hysteresis giúp trạng thái không dao động liên tục khi giá trị đo nằm sát ngưỡng. Hold-time giữ output thêm một khoảng ngắn sau khi vừa kích hoạt, nhờ đó thiết bị mô phỏng không bật/tắt quá nhanh trong môi trường nhiễu.
+Hai điểm đáng chú ý trong thiết kế driver là timeout và kiểm tra giao thức. PMS7003 chỉ được xem là hợp lệ khi checksum đúng. Modbus chỉ được xem là hợp lệ khi response khớp slave ID, function code, byte count và CRC. Vì vậy lỗi dây nối, sensor chưa cấp nguồn hoặc nhiễu đường truyền không làm firmware dùng nhầm giá trị rác cho quyết định điều khiển.
 
-\section{Log và vận hành cục bộ}
+\section{Luồng xử lý trong firmware tuần tự}
 
-\texttt{CsvLogger} ghi dữ liệu vào SPIFFS tại \texttt{/log.csv}. Firmware hỗ trợ lệnh Serial \texttt{START}, \texttt{STOP}, \texttt{CLEAR}, \texttt{DUMP}, \texttt{INTERVAL=...} để phục vụ thí nghiệm. Nhờ đó nhóm có thể thu dữ liệu cục bộ để đối chiếu với luồng RTOS/MQTT/backend khi kiểm thử tích hợp.
+Trong \texttt{hardware/main/main.ino}, hàm \texttt{setup()} khởi tạo Serial, \texttt{SensorHub}, \texttt{CsvLogger}, \texttt{IaqEvaluator} và \texttt{IaqController}. Hàm \texttt{loop()} xử lý lệnh Serial, kiểm tra chu kỳ ghi log rồi đọc một mẫu cảm biến. Mẫu mới được đưa vào \texttt{SnapshotStore}, đánh giá IAQ, áp dụng output LED và ghi xuống SPIFFS.
+
+\begin{lstlisting}[style=engineering,caption={Luồng chính trong firmware tuần tự}]
+handleCommands();
+
+if (g_csv.shouldLog(millis())) {
+  SensorSample s = g_hub.readSample();
+  g_store.publish(s);
+
+  g_iaq = g_eval.evaluate(s);
+  g_ctrl.apply(g_iaq);
+
+  printIAQ(s, g_iaq);
+  g_csv.logToSpiffs(s);
+}
+\end{lstlisting}
+
+\texttt{SnapshotStore} giữ mẫu mới nhất bằng critical section để tránh đọc/ghi không nhất quán khi phần này được dùng lại trong môi trường có nhiều luồng. Ở bản tuần tự, lợi ích chính là tạo một API nhỏ và ổn định cho các phần khác truy xuất mẫu đo mới nhất.
+
+\section{Đánh giá IAQ và quyết định điều khiển}
+
+\texttt{IaqEvaluator} chuyển \texttt{SensorSample} thành \texttt{IaqState}. Mỗi đại lượng được phân vào một trong ba vùng \texttt{SAFE}, \texttt{INTERVENE} và \texttt{ALARM}. Các đại lượng CO2, PM2.5 và VOC dùng hàm đánh giá ba vùng với hysteresis; nhiệt độ và độ ẩm có hàm riêng vì vùng tốt của độ ẩm là một khoảng, không phải chỉ là nhỏ hơn một ngưỡng.
+
+\begin{table}[H]
+    \centering
+    \caption{Ánh xạ IAQ sang thiết bị mô phỏng}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Nguyên nhân & Điều kiện xử lý & Output trong \texttt{IaqState} \\
+        \midrule
+        CO2 cao & Không khí cần tăng thông gió, có thể lọc bổ sung & \texttt{wantVent}, \texttt{wantCarbon}, \texttt{alarmCO2} \\
+        PM2.5 cao & Bụi mịn vượt vùng an toàn & \texttt{wantHepa}, \texttt{alarmPM} \\
+        VOC cao & Hợp chất bay hơi tăng & \texttt{wantVent}, \texttt{wantCarbon}, \texttt{alarmVOC} \\
+        Nhiệt độ cao & Môi trường cần làm mát & \texttt{wantAc}, \texttt{alarmTemp} \\
+        Độ ẩm thấp/cao & Thiếu ẩm thì tạo ẩm, quá ẩm thì thông gió & \texttt{wantHumid}, \texttt{wantVent}, \texttt{alarmRH} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Firmware dùng hold-time mặc định 5000 ms cho các output xử lý môi trường. Khi trạng thái vừa đổi, output được giữ tối thiểu trong khoảng này trước khi đổi tiếp. Cơ chế này làm giảm hiện tượng bật/tắt liên tục khi giá trị đo dao động sát ngưỡng.
+
+\texttt{IaqController} không chứa logic đánh giá chất lượng không khí. Lớp này chỉ nhận \texttt{IaqState} và ghi ra 10 chân LED: 5 LED xanh biểu diễn thiết bị xử lý \texttt{HEPA}, \texttt{VENT}, \texttt{CARBON}, \texttt{AC}, \texttt{HUMID}; 5 LED đỏ biểu diễn cảnh báo theo nguyên nhân \texttt{CO2}, \texttt{PM}, \texttt{VOC}, nhiệt độ và độ ẩm. Nhờ tách như vậy, sau này có thể thay LED bằng relay hoặc module công suất mà không cần sửa thuật toán IAQ.
+
+\section{Ghi log và hỗ trợ kiểm thử}
+
+\texttt{CsvLogger} ghi dữ liệu vào SPIFFS tại \texttt{/log.csv}. File log có header gồm timestamp, PM, nhiệt độ, độ ẩm, CO2, VOC và các cờ hợp lệ. Các giá trị missing được ghi bằng ô trống hoặc sentinel để dễ phân tích lại bằng script bên ngoài.
+
+Firmware hỗ trợ các lệnh Serial phục vụ thí nghiệm:
+
+\begin{itemize}[leftmargin=2em]
+    \item \texttt{START}, \texttt{STOP}: bật hoặc tắt ghi log.
+    \item \texttt{CLEAR}: xóa file log và tạo lại header.
+    \item \texttt{DUMP}: in toàn bộ log ra Serial.
+    \item \texttt{INTERVAL=...}: đổi chu kỳ ghi log, tối thiểu 200 ms.
+\end{itemize}
+
+Các sketch trong \texttt{hardware/test} tách riêng từng phần cứng: \texttt{testPMS7003}, \texttt{testCO2}, \texttt{testSHTC3}, \texttt{testVOC} và \texttt{testWiFi}. Nhóm test này giúp cô lập lỗi wiring hoặc giao thức trước khi chạy firmware tổng hợp, đặc biệt hữu ích với các đường UART/RS485 cần đúng baud rate, slave ID và chân RX/TX.
