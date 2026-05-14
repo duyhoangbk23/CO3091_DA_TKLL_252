@@ -1,0 +1,21 @@
+Đề tài xây dựng một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí trong nhà (Indoor Air Quality -- IAQ). Hệ thống dùng ESP32 làm nút nhúng trung tâm, thu thập dữ liệu từ nhiều loại cảm biến, đánh giá trạng thái môi trường theo thời gian thực, điều khiển thiết bị chấp hành cục bộ và định hướng gửi dữ liệu lên server để hiển thị trên dashboard web.
+
+Trong phạm vi source hiện tại, phần firmware phần cứng đã được hiện thực rõ nhất. Firmware đọc PMS7003 qua UART, đọc CO2 và nhiệt độ/độ ẩm qua RS485 Modbus, đọc VOC qua ADC, đóng gói thành \texttt{SensorSample}, đánh giá IAQ bằng \texttt{IaqEvaluator}, điều khiển LED/thiết bị mô phỏng qua \texttt{IaqController}, và ghi log CSV vào SPIFFS bằng \texttt{CsvLogger}. Các phần RTOS, MQTT, backend, database và frontend đang được định nghĩa theo module README và contract chung để mở rộng thành hệ thống hoàn chỉnh.
+
+\section{Bối cảnh}
+
+Phòng học và phòng làm việc kín thường có nguy cơ tích tụ CO2, bụi mịn, VOC, nhiệt độ cao hoặc độ ẩm không phù hợp. Các yếu tố này ảnh hưởng đến sức khỏe, sự tập trung và mức độ thoải mái của người sử dụng. Việc giám sát thủ công không đủ liên tục, trong khi hệ thống IoT có thể đo, cảnh báo và điều khiển tự động theo trạng thái thực tế.
+
+\section{Mục tiêu}
+
+\begin{itemize}[leftmargin=2em]
+    \item Thiết kế phần cứng đo IAQ dựa trên ESP32 và các cảm biến phổ biến.
+    \item Viết firmware đọc dữ liệu đa giao thức, chuẩn hóa mẫu đo và xử lý lỗi cảm biến.
+    \item Thiết kế tầng RTOS để tách các chức năng đọc cảm biến, xử lý, điều khiển, log và truyền MQTT.
+    \item Thiết kế luồng IoT gửi dữ liệu từ ESP32 lên backend, lưu dữ liệu lịch sử và cung cấp API cho dashboard.
+    \item Thiết kế dashboard web theo dõi realtime, xem lịch sử và gửi lệnh điều khiển thiết bị.
+\end{itemize}
+
+\section{Phạm vi}
+
+Báo cáo tập trung vào thiết kế tổng thể và hiện trạng source trong repository. Phần hardware/firmware được mô tả ở mức hiện thực. Phần RTOS, IoT, server, database và dashboard được trình bày theo thiết kế module, contract dữ liệu và hướng tích hợp vì trong repo hiện chủ yếu có README định hướng cho các phần này.

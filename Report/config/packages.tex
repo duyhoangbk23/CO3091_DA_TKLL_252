@@ -1,0 +1,34 @@
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{seqsplit}
+
+\AtBeginDocument{%
+    \ifenglish
+        \renewcommand{\contentsname}{Contents}%
+        \renewcommand{\chaptername}{Chapter}%
+        \renewcommand{\bibname}{References}%
+        \renewcommand{\figurename}{Figure}%
+        \renewcommand{\tablename}{Table}%
+        \renewcommand{\lstlistingname}{Listing}%
+    \fi
+}
