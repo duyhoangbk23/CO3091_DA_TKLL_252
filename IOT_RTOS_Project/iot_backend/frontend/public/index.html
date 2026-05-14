@@ -15,6 +15,11 @@
             <span class="navbar-brand mb-0 h1">
                 <i class="fas fa-wifi"></i> IoT Dashboard
             </span>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-light" href="index.html">Dashboard</a>
+                <a class="btn btn-sm btn-outline-light" href="analytics.html">Charts</a>
+                <a class="btn btn-sm btn-outline-light" href="control.html">Control</a>
+            </div>
             <span class="badge bg-success" id="connection-status">Connected</span>
         </div>
     </nav>
@@ -26,6 +31,7 @@
             <div class="col-12">
                 <h1 class="text-primary">Real-time Monitoring</h1>
                 <p class="text-muted">Last update: <span id="last-update">-</span></p>
+                <div id="noise-alert" class="alert alert-warning py-2" style="display:none;"></div>
             </div>
         </div>
 
@@ -85,7 +91,7 @@
                         <i class="fas fa-smog fa-3x text-warning mb-3"></i>
                         <h5 class="card-title">PM2.5</h5>
                         <p class="sensor-value" id="pm25-value">--</p>
-                        <p class="text-muted small">µg/m³ | Status: <span id="pm25-status" class="badge bg-info">Reading</span></p>
+                        <p class="text-muted small">ug/m3 | Status: <span id="pm25-status" class="badge bg-info">Reading</span></p>
                     </div>
                 </div>
             </div>
@@ -114,17 +120,6 @@
                 </div>
             </div>
 
-            <!-- Alert Level -->
-            <div class="col-md-6 mb-4">
-                <div class="card sensor-card">
-                    <div class="card-body text-center">
-                        <i class="fas fa-triangle-exclamation fa-3x text-warning mb-3"></i>
-                        <h5 class="card-title">Alert Level</h5>
-                        <p class="sensor-value" id="alert-level-value">--</p>
-                        <p class="text-muted small">0=OK, 1=Warn, 2=Critical | Status: <span id="alert-level-status" class="badge bg-info">Reading</span></p>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Action Buttons -->

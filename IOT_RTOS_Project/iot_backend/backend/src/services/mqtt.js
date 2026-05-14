@@ -11,6 +11,8 @@ const TOPIC_CONTROL = process.env.MQTT_TOPIC_COMMAND || mqttTopics.device_contro
 let client = null;
 let dataCallback = null;
 let latestData = null;
+let latestAck = null;
+let latestThresholds = null;
 
 /**
  * MQTT Service - Handles MQTT broker communication
@@ -49,8 +51,10 @@ function init(onDataReceived) {
 
             if ((topic === TOPIC_DATA || topic === TOPIC_STATUS) && dataCallback) {
                 const mappedData = mapSensorPayload(rawData);
-                latestData = mappedData;
-                dataCallback(mappedData);
+                if (mappedData.ack) latestAck = mappedData.ack;
+                if (mappedData.thresholds) latestThresholds = mappedData.thresholds;
+                latestData = { ...(latestData || {}), ...mappedData };
+                dataCallback(latestData);
             }
         } catch (error) {
             logger.error(`Failed to parse MQTT message: ${error.message}`);
@@ -80,11 +84,9 @@ function publishControl(command, deviceId = DEFAULT_DEVICE_ID) {
     }
 
     try {
-        const payload = JSON.stringify({
-            device_id: deviceId,
-            command,
-            timestamp: Date.now()
-        });
+        const payload = JSON.stringify(typeof command === 'string'
+            ? { device_id: deviceId, command, timestamp: Date.now() }
+            : { device_id: deviceId, ...command, timestamp: Date.now() });
         client.publish(TOPIC_CONTROL, payload, { qos: 1 });
         logger.info(`📤 Control message published: ${payload}`);
         return true;
@@ -104,6 +106,14 @@ function isConnected() {
 
 function getLatestData() {
     return latestData;
+}
+
+function getLatestAck() {
+    return latestAck;
+}
+
+function getLatestThresholds() {
+    return latestThresholds;
 }
 
 /**
@@ -169,6 +179,8 @@ module.exports = {
     publishControl,
     isConnected,
     getLatestData,
+    getLatestAck,
+    getLatestThresholds,
     subscribe,
     publish,
     close

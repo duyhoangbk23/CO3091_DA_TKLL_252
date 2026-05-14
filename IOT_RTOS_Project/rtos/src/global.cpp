@@ -4,6 +4,8 @@
 #include "SnapshotStore.h"
 
 SensorData_t g_LatestData = {"", 0.0f, 0.0f, -1, 0xFFFF, 0, 0, 0};
+RuntimeControl_t g_RuntimeControl = {true, 1};
+ThresholdConfig g_ThresholdConfig = defaultThresholdConfig();
 IaqState g_iaq{};
 IaqEvaluator g_eval;
 IaqController g_ctrl;
@@ -25,7 +27,7 @@ void init_system_resources() {
     xSensorQueue = xQueueCreate(5, sizeof(SensorData_t));
     xDataMutex   = xSemaphoreCreateMutex();
     xAlertSem    = xSemaphoreCreateCounting(10, 0);
-    xControlQueue = xQueueCreate(5, sizeof(char) * 20); 
+    xControlQueue = xQueueCreate(5, sizeof(char) * 512); 
 
     if (xControlQueue != NULL) {
         Serial.println("[System] Control Queue Created!");

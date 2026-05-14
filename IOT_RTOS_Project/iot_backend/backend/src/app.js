@@ -22,6 +22,13 @@ let latestData = {
     co2:         0,
     voc:         0,
     alert_level: 0,
+    sensor_health: { co2: 'MISSING', pm: 'MISSING', voc: 'MISSING', temp: 'MISSING', rh: 'MISSING' },
+    alerts: { co2: false, pm: false, voc: false, temp: false, rh: false },
+    devices: { hepa: false, vent: false, carbon: false, ac: false, humid: false },
+    auto_control_enabled: true,
+    config_version: null,
+    ack: null,
+    thresholds: null,
     timestamp_ms: 0,
     received_at: null,
     status:      'online'
@@ -119,7 +126,8 @@ app.post('/api/control', async (req, res) => {
         'ALARM_PM_ON', 'ALARM_PM_OFF',
         'ALARM_VOC_ON', 'ALARM_VOC_OFF',
         'ALARM_TEMP_ON', 'ALARM_TEMP_OFF',
-        'ALARM_RH_ON', 'ALARM_RH_OFF'
+        'ALARM_RH_ON', 'ALARM_RH_OFF',
+        'GET_AUTO', 'GET_THRESHOLDS', 'RESET_THRESHOLDS'
     ]);
 
     if (!supportedCommands.has(normalizedCommand)) {
@@ -146,6 +154,40 @@ app.post('/api/control', async (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, error: 'Failed to send control: ' + err.message });
     }
+});
+
+function publishStructured(res, device_id, payload) {
+    if (!device_id || !payload.command) {
+        return res.status(400).json({ success: false, error: 'Missing device_id or command' });
+    }
+    const command_id = payload.command_id || `${payload.command}_${Date.now()}`;
+    if (!mqttClient || !mqttClient.publishControl({ ...payload, command_id }, device_id)) {
+        return res.status(500).json({ success: false, error: 'Failed to send control: MQTT client not connected' });
+    }
+    return res.json({
+        success: true,
+        message: `Command "${payload.command}" sent to device "${device_id}"`,
+        result: { device_id, ...payload, command_id, status: 'sent', timestamp: new Date().toISOString() }
+    });
+}
+
+app.post('/api/control/auto', (req, res) => {
+    publishStructured(res, req.body.device_id, { command: 'SET_AUTO', enabled: Boolean(req.body.enabled) });
+});
+
+app.post('/api/control/device', (req, res) => {
+    const valid = new Set(['hepa', 'vent', 'carbon', 'ac', 'humid']);
+    const device = String(req.body.device || '').toLowerCase();
+    if (!valid.has(device)) return res.status(400).json({ success: false, error: 'Invalid device' });
+    publishStructured(res, req.body.device_id, { command: 'SET_DEVICE', device, state: Boolean(req.body.state) });
+});
+
+app.get('/api/control/thresholds', (req, res) => {
+    publishStructured(res, req.query.device_id || 'esp32_device', { command: 'GET_THRESHOLDS' });
+});
+
+app.post('/api/control/thresholds', (req, res) => {
+    publishStructured(res, req.body.device_id, { command: 'SET_THRESHOLDS', thresholds: req.body.thresholds || {} });
 });
 
 // GET /api/stats

@@ -4,6 +4,44 @@ void IaqEvaluator::begin(uint32_t holdMs) {
   holdMs_ = holdMs;
 }
 
+void IaqEvaluator::setConfig(const ThresholdConfig& cfg) {
+  co2_safe = cfg.co2_on;
+  co2_alarm = cfg.co2_on;
+  co2_hys = cfg.co2_on - cfg.co2_off;
+  pm_safe = cfg.pm_on;
+  pm_alarm = cfg.pm_on;
+  pm_hys = cfg.pm_on - cfg.pm_off;
+  voc_safe = cfg.voc_on;
+  voc_alarm = cfg.voc_on;
+  voc_hys = cfg.voc_on - cfg.voc_off;
+  temp_intervene_x10 = cfg.temp_on_x10;
+  temp_alarm_x10 = cfg.temp_on_x10;
+  temp_hys_x10 = cfg.temp_on_x10 - cfg.temp_off_x10;
+  rh_opt_low_x10 = cfg.rh_low_off_x10;
+  rh_intervene_low_x10 = cfg.rh_low_on_x10;
+  rh_opt_high_x10 = cfg.rh_high_off_x10;
+  rh_intervene_high_x10 = cfg.rh_high_on_x10;
+  rh_hys_x10 = min<uint16_t>(cfg.rh_low_off_x10 - cfg.rh_low_on_x10,
+                             cfg.rh_high_on_x10 - cfg.rh_high_off_x10);
+}
+
+ThresholdConfig IaqEvaluator::getConfig() const {
+  ThresholdConfig cfg;
+  cfg.co2_on = co2_safe;
+  cfg.co2_off = co2_safe > co2_hys ? co2_safe - co2_hys : 0;
+  cfg.pm_on = pm_safe;
+  cfg.pm_off = pm_safe > pm_hys ? pm_safe - pm_hys : 0;
+  cfg.voc_on = voc_safe;
+  cfg.voc_off = voc_safe > voc_hys ? voc_safe - voc_hys : 0;
+  cfg.temp_on_x10 = temp_intervene_x10;
+  cfg.temp_off_x10 = temp_intervene_x10 - temp_hys_x10;
+  cfg.rh_low_on_x10 = rh_intervene_low_x10;
+  cfg.rh_low_off_x10 = rh_opt_low_x10;
+  cfg.rh_high_on_x10 = rh_intervene_high_x10;
+  cfg.rh_high_off_x10 = rh_opt_high_x10;
+  return cfg;
+}
+
 IaqZone IaqEvaluator::eval3(uint32_t v, uint32_t safe, uint32_t alarm, uint32_t hys, IaqZone prev) {
   if (prev == IaqZone::ALARM) {
     if (v <= (alarm > hys ? alarm - hys : 0)) return IaqZone::INTERVENE;
@@ -101,22 +139,22 @@ IaqState IaqEvaluator::evaluate(const SensorSample& s) {
   st.alarmTemp = (zTemp_ == IaqZone::ALARM);
   st.alarmRH = (zRH_ == IaqZone::ALARM);
 
-  bool wantVent = (zCO2_ != IaqZone::SAFE) || (zVOC_ != IaqZone::SAFE);
-  bool wantHepa = (zPM_ != IaqZone::SAFE);
-  bool wantCarbon = (zVOC_ != IaqZone::SAFE);
-  bool wantAc = (zTemp_ != IaqZone::SAFE);
+  bool wantVent = autoControlEnabled && ((zCO2_ != IaqZone::SAFE) || (zVOC_ != IaqZone::SAFE));
+  bool wantHepa = autoControlEnabled && (zPM_ != IaqZone::SAFE);
+  bool wantCarbon = autoControlEnabled && ((zCO2_ != IaqZone::SAFE) || (zVOC_ != IaqZone::SAFE));
+  bool wantAc = autoControlEnabled && (zTemp_ != IaqZone::SAFE);
 
   bool wantHumid = false;
   if (st.validTempRH) {
-    if (s.hum_rh_x10 < rh_opt_low_x10) wantHumid = true;
-    if (s.hum_rh_x10 > rh_opt_high_x10) wantVent = true;
+    if (autoControlEnabled && s.hum_rh_x10 < rh_opt_low_x10) wantHumid = true;
+    if (autoControlEnabled && s.hum_rh_x10 > rh_opt_high_x10) wantVent = true;
   }
 
-  if (st.alarmPM) { wantHepa = true; wantVent = true; }
-  if (st.alarmCO2) { wantVent = true; }
-  if (st.alarmVOC) { wantVent = true; wantCarbon = true; }
-  if (st.alarmTemp) { wantAc = true; }
-  if (st.alarmRH && st.validTempRH) {
+  if (autoControlEnabled && st.alarmPM) { wantHepa = true; }
+  if (autoControlEnabled && st.alarmCO2) { wantVent = true; wantCarbon = true; }
+  if (autoControlEnabled && st.alarmVOC) { wantVent = true; }
+  if (autoControlEnabled && st.alarmTemp) { wantAc = true; }
+  if (autoControlEnabled && st.alarmRH && st.validTempRH) {
     if (s.hum_rh_x10 >= rh_intervene_high_x10) wantVent = true;
     if (s.hum_rh_x10 <= rh_intervene_low_x10) wantHumid = true;
   }

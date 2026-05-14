@@ -215,6 +215,50 @@ describe('POST /api/control', () => {
     });
 });
 
+describe('control extensions', () => {
+    test('set auto control publishes structured SET_AUTO command', async () => {
+        const mqtt = makeMockMqtt(true);
+        setMqtt(mqtt);
+        const res = await request(app)
+            .post('/api/control/auto')
+            .send({ device_id: 'esp32_device', enabled: false });
+        expect(res.status).toBe(200);
+        expect(res.body.result.command).toBe('SET_AUTO');
+        expect(mqtt.publishControl).toHaveBeenCalledWith(
+            expect.objectContaining({ command: 'SET_AUTO', enabled: false }),
+            'esp32_device'
+        );
+    });
+
+    test('manual device API validates and publishes SET_DEVICE', async () => {
+        const mqtt = makeMockMqtt(true);
+        setMqtt(mqtt);
+        const res = await request(app)
+            .post('/api/control/device')
+            .send({ device_id: 'esp32_device', device: 'hepa', state: true });
+        expect(res.status).toBe(200);
+        expect(res.body.result.command).toBe('SET_DEVICE');
+        expect(mqtt.publishControl).toHaveBeenCalledWith(
+            expect.objectContaining({ command: 'SET_DEVICE', device: 'hepa', state: true }),
+            'esp32_device'
+        );
+    });
+
+    test('threshold update publishes SET_THRESHOLDS payload', async () => {
+        const mqtt = makeMockMqtt(true);
+        setMqtt(mqtt);
+        const thresholds = { co2_on: 1000, co2_off: 950 };
+        const res = await request(app)
+            .post('/api/control/thresholds')
+            .send({ device_id: 'esp32_device', thresholds });
+        expect(res.status).toBe(200);
+        expect(mqtt.publishControl).toHaveBeenCalledWith(
+            expect.objectContaining({ command: 'SET_THRESHOLDS', thresholds }),
+            'esp32_device'
+        );
+    });
+});
+
 // ============================================================
 //  GET /api/stats
 // ============================================================

@@ -12,9 +12,6 @@ void vTaskSensorRead(void *pvParameters);
 // 3. Task ưu tiên 3: Kéo data từ Queue, lọc, chuẩn hoá, so ngưỡng [cite: 13, 15]
 void vTaskDataProcess(void *pvParameters);
 
-// 4. Task ưu tiên 2: Ghi dữ liệu ra màn hình LCD I2C 16x2 mỗi 1s [cite: 13, 15]
-void vTaskDisplay(void *pvParameters);
-
 // 5. Task ưu tiên 1 (Thấp nhất): Publish data lên MQTT broker mỗi 10s [cite: 13, 15]
 void vTaskMQTT(void *pvParameters);
 

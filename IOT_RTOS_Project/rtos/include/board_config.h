@@ -20,19 +20,18 @@ static constexpr int RS485_DERE_PIN = -1;
 
 static constexpr int VOC_PIN = 34;
 
-static constexpr int I2C_SDA_PIN = 21;
-static constexpr int I2C_SCL_PIN = 22;
+#define LED_CO2_R     23
+#define LED_PM_R      22
+#define LED_VOC_R     21
+#define LED_TEMP_R    19
+#define LED_RH_R      18
 
-#define LED_HEPA_G   13
-#define LED_VENT_G   14
-#define LED_CARBON_G 25
-#define LED_AC_G     32
-#define LED_HUMID_G  33
+#define LED_HEPA_G    5
+#define LED_VENT_G    4
+#define LED_CARBON_G  0
+#define LED_AC_G      2
+#define LED_HUMID_G   15
 
-#define LED_CO2_R    18
-#define LED_PM_R     19
-#define LED_VOC_R    23
-#define LED_TEMP_R   4
-#define LED_RH_R     5
+static constexpr bool LED_ACTIVE_HIGH = true;
 
 #endif

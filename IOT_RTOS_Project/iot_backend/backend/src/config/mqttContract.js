@@ -26,17 +26,52 @@ function mapSensorPayload(raw) {
     const co2I = Number.isFinite(co2) ? Math.trunc(co2) : 0;
     const vocI = Number.isFinite(voc) ? Math.trunc(voc) : 0;
 
-    const t = parseFloat(raw.temperature);
-    const h = parseFloat(raw.humidity);
+    const t = raw.temperature === null ? NaN : parseFloat(raw.temperature);
+    const h = raw.humidity === null ? NaN : parseFloat(raw.humidity);
+    const sensorHealth = raw.sensor_health || {};
+    const alerts = raw.alerts || {};
+    const devices = raw.devices || {};
     return {
         device_id: raw.device_id || DEFAULT_DEVICE_ID,
-        temperature: Number.isFinite(t) ? t : 0,
-        humidity: Number.isFinite(h) ? h : 0,
+        temperature: Number.isFinite(t) ? t : null,
+        humidity: Number.isFinite(h) ? h : null,
         pm25: pm25I,
         co2: co2I,
         voc: vocI,
         alert_level: parseInt(raw.alert_level, 10) || 0,
-        timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp
+        timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
+        uptime_ms: raw.uptime_ms ?? null,
+        sensor_health: {
+            co2: sensorHealth.co2 || (co2I === 65535 ? 'MISSING' : 'OK'),
+            pm: sensorHealth.pm || (pm25I < 0 ? 'MISSING' : 'OK'),
+            voc: sensorHealth.voc || 'OK',
+            temp: sensorHealth.temp || (Number.isFinite(t) ? 'OK' : 'NAN'),
+            rh: sensorHealth.rh || (Number.isFinite(h) ? 'OK' : 'NAN')
+        },
+        alerts: {
+            co2: Boolean(alerts.co2),
+            pm: Boolean(alerts.pm),
+            voc: Boolean(alerts.voc),
+            temp: Boolean(alerts.temp),
+            rh: Boolean(alerts.rh)
+        },
+        devices: {
+            hepa: Boolean(devices.hepa),
+            vent: Boolean(devices.vent),
+            carbon: Boolean(devices.carbon),
+            ac: Boolean(devices.ac),
+            humid: Boolean(devices.humid)
+        },
+        auto_control_enabled: raw.auto_control_enabled !== undefined ? Boolean(raw.auto_control_enabled) : true,
+        config_version: raw.config_version ?? null,
+        ack: raw.status && raw.command ? {
+            command: raw.command,
+            command_id: raw.command_id || '',
+            status: raw.status,
+            message: raw.message || '',
+            thresholds: raw.thresholds || null
+        } : null,
+        thresholds: raw.thresholds || null
     };
 }
 

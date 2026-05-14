@@ -25,6 +25,37 @@ router.post('/control',
     })
 );
 
+router.post('/control/auto',
+    asyncHandler(async (req, res) => {
+        const { device_id, enabled } = req.body;
+        const result = await controlController.setAutoControl(device_id, enabled);
+        res.json(result);
+    })
+);
+
+router.post('/control/device',
+    asyncHandler(async (req, res) => {
+        const { device_id, device, state } = req.body;
+        const result = await controlController.setDeviceState(device_id, device, state);
+        res.json(result);
+    })
+);
+
+router.get('/control/thresholds',
+    asyncHandler(async (req, res) => {
+        const result = await controlController.requestThresholds(req.query.device_id || 'esp32_device');
+        res.json(result);
+    })
+);
+
+router.post('/control/thresholds',
+    asyncHandler(async (req, res) => {
+        const { device_id, thresholds } = req.body;
+        const result = await controlController.updateThresholds(device_id, thresholds);
+        res.json(result);
+    })
+);
+
 /**
  * GET /api/control/history
  * Get control command history

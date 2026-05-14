@@ -16,6 +16,7 @@ void vTaskDataProcess(void *pvParameters) {
             // --- BƯỚC TÍNH TOÁN QUAN TRỌNG NHẤT ---
             // Chuyển đổi SensorData_t sang SensorSample để nạp vào bộ máy của Đôn
             SensorSample sample;
+            sample.ms = (uint32_t)(receivedData.timestamp / 1000);
             sample.ok_sht = !isnan(receivedData.temperature) && !isnan(receivedData.humidity);
             if (sample.ok_sht) {
                 sample.temp_c_x10 = (int16_t)(receivedData.temperature * 10);
@@ -30,13 +31,14 @@ void vTaskDataProcess(void *pvParameters) {
 
             // Gọi "bộ não" tính toán của Đôn để phân tích trạng thái IAQ
             // newState chứa toàn bộ quyết định: bật máy lọc nào, đèn đỏ nào sáng
+            g_eval.autoControlEnabled = g_RuntimeControl.auto_control_enabled;
             IaqState newState = g_eval.evaluate(sample);
 
             // 2. Tổng hợp alert_level dựa trên kết quả tính toán
             uint8_t calculated_level = 0;
-            if (newState.alarmCO2 || newState.alarmPM || newState.alarmVOC) {
+            if (newState.alarmCO2 || newState.alarmPM || newState.alarmVOC || newState.alarmTemp || newState.alarmRH) {
                 calculated_level = 2; // Mức báo động Đỏ
-            } else if (newState.wantVent || newState.wantHepa || newState.wantCarbon) {
+            } else if (newState.wantVent || newState.wantHepa || newState.wantCarbon || newState.wantAc || newState.wantHumid) {
                 calculated_level = 1; // Mức cảnh báo Vàng (đang xử lý môi trường)
             }
             receivedData.alert_level = calculated_level;
@@ -46,6 +48,13 @@ void vTaskDataProcess(void *pvParameters) {
                 g_LatestData = receivedData;
                 
                 // Dòng này chính là chìa khóa để 10 LED của Đôn hoạt động
+                if (!g_RuntimeControl.auto_control_enabled) {
+                    newState.wantHepa = g_iaq.wantHepa;
+                    newState.wantVent = g_iaq.wantVent;
+                    newState.wantCarbon = g_iaq.wantCarbon;
+                    newState.wantAc = g_iaq.wantAc;
+                    newState.wantHumid = g_iaq.wantHumid;
+                }
                 g_iaq = newState; 
                 
                 xSemaphoreGive(xDataMutex);

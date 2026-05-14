@@ -62,7 +62,8 @@ const schemas = {
             'ALARM_PM_ON', 'ALARM_PM_OFF',
             'ALARM_VOC_ON', 'ALARM_VOC_OFF',
             'ALARM_TEMP_ON', 'ALARM_TEMP_OFF',
-            'ALARM_RH_ON', 'ALARM_RH_OFF'
+            'ALARM_RH_ON', 'ALARM_RH_OFF',
+            'GET_AUTO', 'GET_THRESHOLDS', 'RESET_THRESHOLDS'
         ).required()
     }),
 

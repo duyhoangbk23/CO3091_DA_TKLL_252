@@ -1,60 +1,61 @@
-/**
- * Dashboard Page Script
- * Real-time sensor data display
- */
-
 let refreshInterval = null;
-let isConnected = false;
+let previousCleanData = {};
+let lastNoiseAt = 0;
+let lastNoiseMetric = '';
+
+const DASHBOARD_NOISE_CONFIG = {
+    temperature: { maxDelta: 5, label: 'Temperature' },
+    humidity: { maxDelta: 15, label: 'Humidity' },
+    pm25: { maxDelta: 40, label: 'PM2.5' },
+    co2: { maxDelta: 700, label: 'CO2' },
+    voc: { maxDelta: 700, label: 'VOC' }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Dashboard initialized');
     updateFooterTime();
     checkServerConnection();
     refreshData();
 
-    refreshInterval = setInterval(refreshData, 5000);
+    refreshInterval = setInterval(refreshData, 2000);
+    setInterval(updateNoiseAlert, 1000);
     setInterval(updateFooterTime, 1000);
 });
 
 async function refreshData() {
     const data = await fetchLatestData();
-
     if (data) {
-        isConnected = true;
         updateConnectionStatus(true);
         updateDashboard(data);
     } else {
-        isConnected = false;
         updateConnectionStatus(false);
     }
 }
 
 function updateDashboard(data) {
+    data = filterDashboardNoise(data);
     document.getElementById('device-id').textContent = data.device_id || '-';
     document.getElementById('device-status').textContent = data.status || 'unknown';
     document.getElementById('device-status').className =
         data.status === 'online' ? 'badge bg-success' : 'badge bg-danger';
 
+    const health = data.sensor_health || {};
     const tempValue = formatValue(data.temperature, 1);
     const humidityValue = formatValue(data.humidity, 1);
     const pm25Value = Number.parseInt(data.pm25, 10) || 0;
     const co2Value = Number.parseInt(data.co2, 10) || 0;
     const vocValue = Number.parseInt(data.voc, 10) || 0;
-    const alertLevelValue = Number.parseInt(data.alert_level, 10) || 0;
 
-    document.getElementById('temperature-value').textContent = tempValue + ' C';
-    document.getElementById('humidity-value').textContent = humidityValue + '% RH';
-    document.getElementById('pm25-value').textContent = `${pm25Value} µg/m³`;
+    document.getElementById('temperature-value').textContent = `${tempValue} C`;
+    document.getElementById('humidity-value').textContent = `${humidityValue}% RH`;
+    document.getElementById('pm25-value').textContent = `${pm25Value} ug/m3`;
     document.getElementById('co2-value').textContent = `${co2Value} ppm`;
-    document.getElementById('voc-value').textContent = `${vocValue} ppb`;
-    document.getElementById('alert-level-value').textContent = alertLevelValue;
+    document.getElementById('voc-value').textContent = `${vocValue} index`;
 
-    document.getElementById('temp-status').textContent = getTempStatus(data.temperature);
-    document.getElementById('humidity-status').textContent = getHumidityStatus(data.humidity);
-    document.getElementById('pm25-status').textContent = getPm25Status(pm25Value);
-    document.getElementById('co2-status').textContent = getCo2Status(co2Value);
-    document.getElementById('voc-status').textContent = getVocStatus(vocValue);
-    document.getElementById('alert-level-status').textContent = getAlertStatus(alertLevelValue);
+    setHealthBadge('temp-status', health.temp, getTempStatus(data.temperature));
+    setHealthBadge('humidity-status', health.rh, getHumidityStatus(data.humidity));
+    setHealthBadge('pm25-status', health.pm, getPm25Status(pm25Value));
+    setHealthBadge('co2-status', health.co2, getCo2Status(co2Value));
+    setHealthBadge('voc-status', health.voc, getVocStatus(vocValue));
 
     const receivedAt = data.received_at || new Date().toISOString();
     document.getElementById('last-update').textContent = formatTimestamp(receivedAt);
@@ -62,6 +63,47 @@ function updateDashboard(data) {
     document.getElementById('device-timestamp').textContent = data.timestamp_ms || '-';
 
     animateSensorUpdate();
+}
+
+function filterDashboardNoise(data) {
+    const next = { ...data };
+    Object.entries(DASHBOARD_NOISE_CONFIG).forEach(([metric, config]) => {
+        const value = Number(data[metric]);
+        const previous = Number(previousCleanData[metric]);
+        if (Number.isFinite(value) && Number.isFinite(previous) && Math.abs(value - previous) > config.maxDelta) {
+            next[metric] = previous;
+            lastNoiseAt = Date.now();
+            lastNoiseMetric = config.label;
+        } else if (Number.isFinite(value)) {
+            previousCleanData[metric] = value;
+        }
+    });
+    return next;
+}
+
+function updateNoiseAlert() {
+    const alert = document.getElementById('noise-alert');
+    if (!alert) return;
+    if (!lastNoiseAt || Date.now() - lastNoiseAt > 30000) {
+        alert.style.display = 'none';
+        alert.textContent = '';
+        return;
+    }
+    const seconds = Math.floor((Date.now() - lastNoiseAt) / 1000);
+    alert.style.display = 'block';
+    alert.textContent = `Noise detected on ${lastNoiseMetric} ${seconds} seconds ago. The dashboard is holding the previous valid value.`;
+}
+
+function setHealthBadge(id, health, fallback) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (health && health !== 'OK') {
+        el.textContent = health;
+        el.className = 'badge bg-danger';
+    } else {
+        el.textContent = fallback;
+        el.className = 'badge bg-info';
+    }
 }
 
 function getTempStatus(temp) {
@@ -97,21 +139,11 @@ function getVocStatus(voc) {
     return 'High';
 }
 
-function getAlertStatus(alertLevel) {
-    if (alertLevel === 0) return 'OK';
-    if (alertLevel === 1) return 'Warning';
-    return 'Critical';
-}
-
 function updateConnectionStatus(connected) {
     const statusBadge = document.getElementById('connection-status');
-    if (connected) {
-        statusBadge.className = 'badge bg-success';
-        statusBadge.textContent = 'Connected';
-    } else {
-        statusBadge.className = 'badge bg-danger';
-        statusBadge.textContent = 'Disconnected';
-    }
+    if (!statusBadge) return;
+    statusBadge.className = connected ? 'badge bg-success' : 'badge bg-danger';
+    statusBadge.textContent = connected ? 'Connected' : 'Disconnected';
 }
 
 async function checkServerConnection() {
@@ -120,8 +152,7 @@ async function checkServerConnection() {
 }
 
 function animateSensorUpdate() {
-    const cards = document.querySelectorAll('.sensor-card');
-    cards.forEach(card => {
+    document.querySelectorAll('.sensor-card').forEach(card => {
         card.style.animation = 'none';
         setTimeout(() => {
             card.style.animation = 'pulse 0.3s ease-in-out';
@@ -130,12 +161,9 @@ function animateSensorUpdate() {
 }
 
 function updateFooterTime() {
-    const now = new Date();
-    document.getElementById('footer-time').textContent = now.toLocaleString();
+    document.getElementById('footer-time').textContent = new Date().toLocaleString();
 }
 
 window.addEventListener('beforeunload', () => {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-    }
+    if (refreshInterval) clearInterval(refreshInterval);
 });

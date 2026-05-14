@@ -38,8 +38,9 @@ async function fetchLatestData() {
  */
 async function fetchHistoricalData(limit = 100, hours = 24) {
     try {
+        const cappedLimit = Math.min(Number(limit) || 20, 20);
         const response = await fetch(
-            `${API_BASE_URL}/history?limit=${limit}&hours=${hours}`
+            `${API_BASE_URL}/history?limit=${cappedLimit}&hours=${hours}`
         );
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -83,6 +84,46 @@ async function sendControlCommand(deviceId, command) {
             error: error.message
         };
     }
+}
+
+async function postJson(path, body) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        return result;
+    } catch (error) {
+        console.error(`API ${path} failed:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function setAutoControl(deviceId, enabled) {
+    return postJson('/control/auto', { device_id: deviceId, enabled });
+}
+
+async function setDeviceState(deviceId, device, state) {
+    return postJson('/control/device', { device_id: deviceId, device, state });
+}
+
+async function requestThresholdConfig(deviceId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/control/thresholds?device_id=${encodeURIComponent(deviceId)}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        return result;
+    } catch (error) {
+        console.error('Error requesting thresholds:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function updateThresholdConfig(deviceId, thresholds) {
+    return postJson('/control/thresholds', { device_id: deviceId, thresholds });
 }
 
 /**
@@ -150,5 +191,6 @@ function formatTimestamp(timestamp) {
  * Format sensor value to specified decimal places
  */
 function formatValue(value, decimals = 1) {
-    return parseFloat(value).toFixed(decimals);
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n.toFixed(decimals) : '--';
 }

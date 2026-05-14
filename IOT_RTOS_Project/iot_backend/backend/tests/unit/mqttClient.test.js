@@ -74,9 +74,10 @@ describe('mqttClient.init()', () => {
 
         const payload = JSON.stringify({
             device_id: 'esp32_device',
-            temperature: 28.5,
-            humidity: 65.0,
+            temperature: null,
+            humidity: null,
             pm25: 220,
+            sensor_health: { temp: 'NAN', rh: 'NAN', pm: 'OK' },
             alert_level: 0,
             timestamp_ms: 123456
         });
@@ -85,8 +86,8 @@ describe('mqttClient.init()', () => {
         expect(callback).toHaveBeenCalledTimes(1);
         expect(callback).toHaveBeenCalledWith(
             expect.objectContaining({
-                temperature: 28.5,
-                humidity:    65.0,
+                temperature: null,
+                humidity:    null,
                 device_id:   'esp32_device',
                 pm25: 220,
                 co2: 0,

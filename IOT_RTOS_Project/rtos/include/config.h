@@ -22,8 +22,6 @@
 // // Định nghĩa chân phần cứng (Hardware Pins)
 // #define DHT_PIN     4     // Data, pull-up 10k -> 3.3V [cite: 24]
 // #define MQ135_PIN   34    // ADC1_CH6, 12-bit [cite: 25]
-// #define I2C_SDA     21    // LCD SDA [cite: 26]
-// #define I2C_SCL     22    // LCD SCL [cite: 26]
 // #define LED_RED     26    // Báo động nguy hiểm [cite: 28]
 // #define LED_YELLOW  27    // Cảnh báo [cite: 29]
 // #define LED_GREEN   32    // Trạng thái bình thường [cite: 30]

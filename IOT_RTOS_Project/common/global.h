@@ -33,6 +33,11 @@ typedef struct {
     int64_t  timestamp;     // esp_timer_get_time()
 } SensorData_t;
 
+typedef struct {
+    bool auto_control_enabled;
+    uint32_t config_version;
+} RuntimeControl_t;
+
 extern WiFiClient espClient;
 extern PubSubClient mqttClient;
 //Biến global giữa mqtt và task_control để lưu lệnh từ xa
@@ -40,6 +45,9 @@ extern PubSubClient mqttClient;
 extern QueueHandle_t xControlQueue;
 // Biến global để các Task Display/MQTT cùng đọc
 extern SensorData_t g_LatestData;
+extern RuntimeControl_t g_RuntimeControl;
+extern IaqState g_iaq;
+extern ThresholdConfig g_ThresholdConfig;
 
 // Queue truyền data thô
 extern QueueHandle_t xSensorQueue; 

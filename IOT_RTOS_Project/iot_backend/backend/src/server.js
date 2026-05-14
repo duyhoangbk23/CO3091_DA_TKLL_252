@@ -46,7 +46,12 @@ app.use(helmet()); // Security headers
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: parseInt(process.env.API_RATE_LIMIT_MAX || '2000', 10),
+    skip: (req) => req.method === 'GET' && (
+        req.path === '/api/data' ||
+        req.path === '/api/history' ||
+        req.path === '/api/stats'
+    ),
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);

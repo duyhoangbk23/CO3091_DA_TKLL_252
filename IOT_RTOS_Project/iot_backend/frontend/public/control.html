@@ -9,173 +9,231 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">
-                <i class="fas fa-toggle-on"></i> Device Control
-            </span>
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-toggle-on"></i> Device Control</span>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-light" href="index.html">Dashboard</a>
+                <a class="btn btn-sm btn-outline-light" href="analytics.html">Charts</a>
+                <a class="btn btn-sm btn-outline-light" href="control.html">Control</a>
+            </div>
             <span class="badge bg-success" id="connection-status">Connected</span>
         </div>
     </nav>
 
-    <!-- Main Container -->
-    <div class="container-fluid py-4">
-        <!-- Page Title -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="text-primary">Device Management</h1>
-                <p class="text-muted">Send commands to connected devices</p>
-            </div>
-        </div>
-
-        <!-- Device Information -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
+    <div class="container-fluid py-3">
+        <div class="row g-3 align-items-stretch mb-3">
+            <div class="col-lg-5">
+                <div class="card h-100">
                     <div class="card-header bg-primary text-white">
-                        <i class="fas fa-info-circle"></i> Active Device
+                        <i class="fas fa-microchip"></i> Device
                     </div>
-                    <div class="card-body">
-                        <div class="row">
+                    <div class="card-body compact-panel">
+                        <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-6">
-                                <p><strong>Device ID:</strong> <span id="device-id">esp32_device</span></p>
-                                <p><strong>Status:</strong> <span id="device-status" class="badge bg-success">Online</span></p>
+                                <label for="device-select" class="form-label">Target ESP32</label>
+                                <select id="device-select" class="form-select" required>
+                                    <option value="esp32_device" selected>ESP32 Device</option>
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <p><strong>Last Update:</strong> <span id="last-update">-</span></p>
-                                <p><strong>Command Queue:</strong> <span class="badge bg-info" id="queue-count">0</span></p>
+                            <div class="col-md-3">
+                                <span class="small text-muted d-block">Status</span>
+                                <span id="device-status" class="badge bg-secondary">Unknown</span>
+                            </div>
+                            <div class="col-md-3">
+                                <span class="small text-muted d-block">Last Update</span>
+                                <span id="last-update" class="small">-</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center border-top border-bottom py-2 mb-3">
+                            <div>
+                                <strong>Auto Control</strong>
+                                <p class="small text-muted mb-0" id="auto-control-note">Auto mode locks manual device toggles.</p>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="auto-control-switch" checked>
+                            </div>
+                        </div>
+                        <div class="device-control-grid" id="device-control-grid">
+                            <div class="device-card" id="device-card-vent">
+                                <div class="device-icon"><i class="fas fa-fan"></i></div>
+                                <div class="device-copy">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <h6 class="mb-0">Ventilation</h6>
+                                        <span id="device-vent-state" class="badge bg-secondary">OFF</span>
+                                    </div>
+                                    <p class="small text-muted mb-1">Exhaust and fresh air fan</p>
+                                    <span class="small" id="device-vent-pending">Ready</span>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input manual-device-toggle" type="checkbox" id="device-vent-toggle" data-device="vent">
+                                </div>
+                            </div>
+                            <div class="device-card" id="device-card-hepa">
+                                <div class="device-icon"><i class="fas fa-filter"></i></div>
+                                <div class="device-copy">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <h6 class="mb-0">PM Filter</h6>
+                                        <span id="device-hepa-state" class="badge bg-secondary">OFF</span>
+                                    </div>
+                                    <p class="small text-muted mb-1">Fine dust filtration</p>
+                                    <span class="small" id="device-hepa-pending">Ready</span>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input manual-device-toggle" type="checkbox" id="device-hepa-toggle" data-device="hepa">
+                                </div>
+                            </div>
+                            <div class="device-card" id="device-card-carbon">
+                                <div class="device-icon"><i class="fas fa-cloud"></i></div>
+                                <div class="device-copy">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <h6 class="mb-0">CO2 Filter</h6>
+                                        <span id="device-carbon-state" class="badge bg-secondary">OFF</span>
+                                    </div>
+                                    <p class="small text-muted mb-1">CO2 reduction assist</p>
+                                    <span class="small" id="device-carbon-pending">Ready</span>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input manual-device-toggle" type="checkbox" id="device-carbon-toggle" data-device="carbon">
+                                </div>
+                            </div>
+                            <div class="device-card" id="device-card-ac">
+                                <div class="device-icon"><i class="fas fa-snowflake"></i></div>
+                                <div class="device-copy">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <h6 class="mb-0">Air Conditioner</h6>
+                                        <span id="device-ac-state" class="badge bg-secondary">OFF</span>
+                                    </div>
+                                    <p class="small text-muted mb-1">Temperature control</p>
+                                    <span class="small" id="device-ac-pending">Ready</span>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input manual-device-toggle" type="checkbox" id="device-ac-toggle" data-device="ac">
+                                </div>
+                            </div>
+                            <div class="device-card" id="device-card-humid">
+                                <div class="device-icon"><i class="fas fa-droplet"></i></div>
+                                <div class="device-copy">
+                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                        <h6 class="mb-0">Humidifier</h6>
+                                        <span id="device-humid-state" class="badge bg-secondary">OFF</span>
+                                    </div>
+                                    <p class="small text-muted mb-1">Humidity control</p>
+                                    <span class="small" id="device-humid-pending">Ready</span>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input manual-device-toggle" type="checkbox" id="device-humid-toggle" data-device="humid">
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Live Sensor Readings -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <i class="fas fa-chart-area"></i> Live Sensor Readings
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-sliders-h"></i> Firmware Configuration
                     </div>
                     <div class="card-body">
+                        <form id="threshold-form">
+                            <div class="row g-2 align-items-end mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Sampling rate (s)</label>
+                                    <input class="form-control" id="sampling-rate" type="number" value="2" min="1" max="60" disabled>
+                                </div>
+                                <div class="col-md-8">
+                                    <span class="small text-muted">Firmware publishes telemetry every 2 seconds. Thresholds below are saved to ESP32 flash.</span>
+                                </div>
+                            </div>
+                            <div class="table-responsive threshold-table">
+                                <table class="table table-sm table-bordered align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Metric</th>
+                                            <th>On threshold</th>
+                                            <th>Off threshold</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>CO2 (ppm)</td>
+                                            <td><input class="form-control form-control-sm" id="th-co2-on" type="number" value="1000"></td>
+                                            <td><input class="form-control form-control-sm" id="th-co2-off" type="number" value="950"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>PM2.5 (ug/m3)</td>
+                                            <td><input class="form-control form-control-sm" id="th-pm-on" type="number" value="35"></td>
+                                            <td><input class="form-control form-control-sm" id="th-pm-off" type="number" value="30"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>VOC (index)</td>
+                                            <td><input class="form-control form-control-sm" id="th-voc-on" type="number" value="500"></td>
+                                            <td><input class="form-control form-control-sm" id="th-voc-off" type="number" value="450"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Temperature (C)</td>
+                                            <td><input class="form-control form-control-sm" id="th-temp-on" type="number" step="0.1" value="32"></td>
+                                            <td><input class="form-control form-control-sm" id="th-temp-off" type="number" step="0.1" value="31"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>RH low (% RH)</td>
+                                            <td><input class="form-control form-control-sm" id="th-rh-low-on" type="number" step="0.1" value="30"></td>
+                                            <td><input class="form-control form-control-sm" id="th-rh-low-off" type="number" step="0.1" value="35"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>RH high (% RH)</td>
+                                            <td><input class="form-control form-control-sm" id="th-rh-high-on" type="number" step="0.1" value="65"></td>
+                                            <td><input class="form-control form-control-sm" id="th-rh-high-off" type="number" step="0.1" value="60"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-12 d-flex flex-wrap gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-primary" id="load-thresholds-btn">
+                                    <i class="fas fa-download"></i> Load From Firmware
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save To Firmware
+                                </button>
+                                <span class="small align-self-center" id="threshold-status">Ready</span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <button class="card-header bg-success text-white border-0 text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#sensor-panel">
+                        <i class="fas fa-chart-area"></i> Live Sensor Readings
+                    </button>
+                    <div class="card-body collapse show" id="sensor-panel">
                         <div class="table-responsive">
                             <table class="table table-bordered mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Sensor</th>
-                                        <th>Value</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>Metric</th><th>Value</th><th>Health</th></tr></thead>
                                 <tbody>
-                                    <tr>
-                                        <td>Temperature</td>
-                                        <td id="sensor-temp">--</td>
-                                        <td id="sensor-temp-status">-</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Humidity</td>
-                                        <td id="sensor-humidity">--</td>
-                                        <td id="sensor-humidity-status">-</td>
-                                    </tr>
-                                    <tr>
-                                        <td>PM2.5</td>
-                                        <td id="sensor-pm25">--</td>
-                                        <td id="sensor-pm25-status">-</td>
-                                    </tr>
-                                    <tr>
-                                        <td>CO2</td>
-                                        <td id="sensor-co2">--</td>
-                                        <td id="sensor-co2-status">-</td>
-                                    </tr>
-                                    <tr>
-                                        <td>VOC</td>
-                                        <td id="sensor-voc">--</td>
-                                        <td id="sensor-voc-status">-</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Alert Level</td>
-                                        <td id="sensor-alert-level">--</td>
-                                        <td>-</td>
-                                    </tr>
+                                    <tr><td>Temperature</td><td id="sensor-temp">--</td><td id="sensor-temp-status">-</td></tr>
+                                    <tr><td>Humidity</td><td id="sensor-humidity">--</td><td id="sensor-humidity-status">-</td></tr>
+                                    <tr><td>PM2.5</td><td id="sensor-pm25">--</td><td id="sensor-pm25-status">-</td></tr>
+                                    <tr><td>CO2</td><td id="sensor-co2">--</td><td id="sensor-co2-status">-</td></tr>
+                                    <tr><td>VOC</td><td id="sensor-voc">--</td><td id="sensor-voc-status">-</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Command Control Panel -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-warning text-dark">
-                        <i class="fas fa-sliders-h"></i> Command Interface
-                    </div>
-                    <div class="card-body">
-                        <form id="command-form">
-                            <div class="mb-3">
-                                <label for="device-select" class="form-label">Target Device</label>
-                                <select id="device-select" class="form-select" required>
-                                    <option value="esp32_device" selected>ESP32 Device</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="command-select" class="form-label">Command</label>
-                                <select id="command-select" class="form-select" required>
-<option value="LED_ON">Turn LED ON</option>
-                                <option value="LED_OFF">Turn LED OFF</option>
-                                <option value="HEPA_ON">Turn HEPA ON</option>
-                                <option value="HEPA_OFF">Turn HEPA OFF</option>
-                                <option value="VENT_ON">Turn Vent ON</option>
-                                <option value="VENT_OFF">Turn Vent OFF</option>
-                                <option value="GET_STATUS">Get Device Status</option>
-                                <option value="REBOOT">Reboot Device</option>
-                                </select>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-send"></i> Send Command
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Commands -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <i class="fas fa-bolt"></i> Quick Commands
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-success btn-lg" onclick="sendQuickCommand('ON')">
-                                <i class="fas fa-power-off"></i> Turn LED ON
-                            </button>
-                            <button class="btn btn-danger btn-lg" onclick="sendQuickCommand('OFF')">
-                                <i class="fas fa-power-off"></i> Turn LED OFF
-                            </button>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Response/Status -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
+            <div class="col-lg-6">
+                <div class="card h-100 draggable-panel" draggable="true">
+                    <button class="card-header bg-secondary text-white border-0 text-start w-100" type="button" data-bs-toggle="collapse" data-bs-target="#history-panel">
                         <i class="fas fa-history"></i> Command History
-                    </div>
-                    <div class="card-body">
-                        <div id="command-history" style="max-height: 300px; overflow-y: auto;">
+                    </button>
+                    <div class="card-body collapse show" id="history-panel">
+                        <div id="command-history" style="max-height: 240px; overflow-y: auto;">
                             <p class="text-muted">No commands sent yet</p>
                         </div>
                     </div>
@@ -183,71 +241,14 @@
             </div>
         </div>
 
-        <!-- Response Display -->
-        <div class="row mb-4" id="response-container" style="display: none;">
-            <div class="col-md-12">
-                <div class="alert" id="response-alert" role="alert">
-                    <strong>Response:</strong> <span id="response-text"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Device Settings -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-dark text-white">
-                        <i class="fas fa-cog"></i> Device Settings
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="sampling-rate" class="form-label">Sampling Rate (seconds)</label>
-                                    <input type="number" class="form-control" id="sampling-rate" value="2" min="1" max="60">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="alert-temp" class="form-label">Temperature Alert (°C)</label>
-                                    <input type="number" class="form-control" id="alert-temp" value="35" min="0" max="100">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="alert-humidity" class="form-label">Humidity Alert (% RH)</label>
-                                    <input type="number" class="form-control" id="alert-humidity" value="80" min="0" max="100">
-                                </div>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" onclick="saveSettings(event)">
-                            <i class="fas fa-save"></i> Save Settings
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="btn-group d-flex gap-2" role="group">
-                    <a href="index.html" class="btn btn-primary">
-                        <i class="fas fa-home"></i> Back to Dashboard
-                    </a>
-                    <a href="analytics.html" class="btn btn-info">
-                        <i class="fas fa-chart-line"></i> View History
-                    </a>
-                    <button class="btn btn-danger" onclick="clearHistory()">
-                        <i class="fas fa-trash"></i> Clear History
-                    </button>
-                </div>
+        <div id="response-container" style="display:none;">
+            <div class="alert" id="response-alert" role="alert">
+                <strong>Response:</strong> <span id="response-text"></span>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-3 mt-5">
+    <footer class="bg-dark text-white text-center py-3 mt-4">
         <p class="mb-0">IoT Monitoring System v1.0.0 | <span id="footer-time">-</span></p>
     </footer>
 

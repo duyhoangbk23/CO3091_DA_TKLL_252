@@ -1,304 +1,179 @@
-/**
- * Analytics Page Script
- * Historical data visualization and analysis
- */
-
 let temperatureChart = null;
 let humidityChart = null;
 let pm25Chart = null;
 let co2Chart = null;
 let vocChart = null;
-let allData = [];
+let samples = [];
+let lastNoiseAt = 0;
+let lastNoiseMetric = '';
+
+const MAX_VISIBLE_SAMPLES = 20;
+const REFRESH_MS = 2000;
+
+const CHART_DOMAIN = {
+    temperature: { delta: 5, fallback: [20, 35] },
+    humidity: { delta: 10, fallback: [0, 100] },
+    pm25: { delta: 10, fallback: [0, 50] },
+    co2: { delta: 100, fallback: [400, 1200] },
+    voc: { delta: 50, fallback: [0, 500] }
+};
+
+const NOISE_CONFIG = {
+    temperature: { maxDelta: 5, label: 'Temperature' },
+    humidity: { maxDelta: 15, label: 'Humidity' },
+    pm25: { maxDelta: 40, label: 'PM2.5' },
+    co2: { maxDelta: 700, label: 'CO2' },
+    voc: { maxDelta: 700, label: 'VOC' }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Analytics page initialized');
+    initializeChartsWhenReady();
+    refreshFromDatabase();
     updateFooterTime();
-    initializeCharts();
+    setInterval(refreshFromDatabase, REFRESH_MS);
+    setInterval(updateNoiseAlert, 1000);
     setInterval(updateFooterTime, 1000);
 });
 
-function initializeCharts() {
-    const tempCtx = document.getElementById('temperature-chart').getContext('2d');
-    const humidityCtx = document.getElementById('humidity-chart').getContext('2d');
+function initializeChartsWhenReady() {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js is not loaded yet. Retrying chart initialization...');
+        setTimeout(initializeChartsWhenReady, 500);
+        return;
+    }
+    if (temperatureChart) return;
+    temperatureChart = createLineChart('temperature-chart', 'Temperature (C)', '#dc3545', 'C');
+    humidityChart = createLineChart('humidity-chart', 'Humidity (% RH)', '#0dcaf0', '% RH');
+    pm25Chart = createLineChart('pm25-chart', 'PM2.5 (ug/m3)', '#ffc107', 'ug/m3');
+    co2Chart = createLineChart('co2-chart', 'CO2 (ppm)', '#6c757d', 'ppm');
+    vocChart = createLineChart('voc-chart', 'VOC (index)', '#0d6efd', 'index');
+    updateCharts(samples);
+}
 
-    temperatureChart = new Chart(tempCtx, {
+function createLineChart(canvasId, label, color, unit) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    return new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
             datasets: [{
-                label: 'Temperature (C)',
+                label,
                 data: [],
-                borderColor: '#dc3545',
-                backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                tension: 0.4,
+                borderColor: color,
+                backgroundColor: `${color}20`,
+                tension: 0.35,
                 fill: true,
                 pointRadius: 2,
-                pointHoverRadius: 5
+                pointHoverRadius: 5,
+                spanGaps: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            animation: false,
             plugins: { legend: { display: true, position: 'top' } },
             scales: {
                 y: {
                     beginAtZero: false,
-                    title: { display: true, text: 'C' }
-                }
-            }
-        }
-    });
-
-    humidityChart = new Chart(humidityCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Humidity (% RH)',
-                data: [],
-                borderColor: '#0dcaf0',
-                backgroundColor: 'rgba(13, 202, 240, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: true, position: 'top' } },
-            scales: {
-                y: {
-                    min: 0,
-                    max: 100,
-                    title: { display: true, text: '% RH' }
-                }
-            }
-        }
-    });
-
-    const pm25Ctx = document.getElementById('pm25-chart').getContext('2d');
-    const co2Ctx = document.getElementById('co2-chart').getContext('2d');
-    const vocCtx = document.getElementById('voc-chart').getContext('2d');
-
-    pm25Chart = new Chart(pm25Ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'PM2.5 (µg/m³)',
-                data: [],
-                borderColor: '#ffc107',
-                backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: true, position: 'top' } },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'µg/m³' }
-                }
-            }
-        }
-    });
-
-    co2Chart = new Chart(co2Ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'CO₂ (ppm)',
-                data: [],
-                borderColor: '#6c757d',
-                backgroundColor: 'rgba(108, 117, 125, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: true, position: 'top' } },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    min: 400,
-                    title: { display: true, text: 'ppm' }
-                }
-            }
-        }
-    });
-
-    vocChart = new Chart(vocCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'VOC (ppb)',
-                data: [],
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 2,
-                pointHoverRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: true, position: 'top' } },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'ppb' }
+                    title: { display: true, text: unit }
                 }
             }
         }
     });
 }
 
-async function loadHistory() {
-    const limit = parseInt(document.getElementById('data-limit').value);
-    const hours = parseInt(document.getElementById('time-range').value);
+async function refreshFromDatabase() {
+    try {
+        const history = await fetchHistoricalData(MAX_VISIBLE_SAMPLES, 24);
+        samples = normalizeRows((history || [])
+            .map(normalizeTelemetry)
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)))
+            .slice(-MAX_VISIBLE_SAMPLES);
 
-    document.getElementById('stat-records').textContent = 'Loading...';
-
-    allData = await fetchHistoricalData(limit, hours);
-
-    if (allData.length === 0) {
-        alert('No data available for the selected criteria');
-        document.getElementById('stat-records').textContent = '0';
-        return;
+        updateStatistics(samples);
+        updateCharts(samples);
+        setConnectionStatus(true);
+    } catch (error) {
+        console.error('Failed to load chart data from database:', error);
+        setConnectionStatus(false);
     }
+}
 
-    updateStatistics(allData);
-    updateCharts(allData);
-    updateDataTable(allData);
+function normalizeTelemetry(row) {
+    return {
+        ...row,
+        created_at: row.created_at || row.received_at || row.timestamp || new Date().toISOString()
+    };
+}
+
+function normalizeRows(rows) {
+    return ChartUtils.replaceNoiseWithPrevious(rows || [], NOISE_CONFIG, event => {
+        lastNoiseAt = Date.now();
+        lastNoiseMetric = NOISE_CONFIG[event.metric]?.label || event.metric;
+    });
 }
 
 function updateStatistics(data) {
-    if (data.length === 0) return;
+    const avg = (values, digits = 1) => {
+        const clean = ChartUtils.toFiniteNumbers(values);
+        if (!clean.length) return '-';
+        return (clean.reduce((sum, value) => sum + value, 0) / clean.length).toFixed(digits);
+    };
 
-    const temperatures = data.map(d => d.temperature);
-    const humidities = data.map(d => d.humidity);
-    const pm25s = data.filter(d => d.pm25 != null && d.pm25 !== -1).map(d => d.pm25);
-    const co2s = data.filter(d => d.co2 != null && d.co2 !== 65535 && d.co2 !== -1).map(d => d.co2);
-    const vocs = data.filter(d => d.voc != null && d.voc !== -1).map(d => d.voc);
-
-    const avgTemp = (temperatures.reduce((a, b) => a + b, 0) / temperatures.length).toFixed(1);
-    const avgHumidity = (humidities.reduce((a, b) => a + b, 0) / humidities.length).toFixed(1);
-    const avgPm25 = pm25s.length > 0 ? (pm25s.reduce((a, b) => a + b, 0) / pm25s.length).toFixed(1) : '-';
-    const avgCo2 = co2s.length > 0 ? (co2s.reduce((a, b) => a + b, 0) / co2s.length).toFixed(0) : '-';
-    const avgVoc = vocs.length > 0 ? (vocs.reduce((a, b) => a + b, 0) / vocs.length).toFixed(0) : '-';
-
-    document.getElementById('stat-avg-temp').textContent = avgTemp;
-    document.getElementById('stat-avg-humidity').textContent = avgHumidity;
-    document.getElementById('stat-avg-pm25').textContent = avgPm25;
-    document.getElementById('stat-avg-co2').textContent = avgCo2;
-    document.getElementById('stat-avg-voc').textContent = avgVoc;
-    document.getElementById('stat-records').textContent = data.length;
+    document.getElementById('stat-avg-temp').textContent = avg(data.map(row => metricValue(row, 'temperature', 'temp')));
+    document.getElementById('stat-avg-humidity').textContent = avg(data.map(row => metricValue(row, 'humidity', 'rh')));
+    document.getElementById('stat-avg-pm25').textContent = avg(data.map(row => metricValue(row, 'pm25', 'pm')));
+    document.getElementById('stat-avg-co2').textContent = avg(data.map(row => metricValue(row, 'co2', 'co2')), 0);
+    document.getElementById('stat-avg-voc').textContent = avg(data.map(row => metricValue(row, 'voc', 'voc')), 0);
 }
 
 function updateCharts(data) {
     if (!temperatureChart || !humidityChart || !pm25Chart || !co2Chart || !vocChart) return;
-
-    const sortedData = [...data].sort((a, b) =>
-        new Date(a.created_at) - new Date(b.created_at)
-    );
-
-    const labels = sortedData.map(d => {
-        const date = new Date(d.created_at);
-        return date.toLocaleTimeString();
-    });
-
-    temperatureChart.data.labels = labels;
-    temperatureChart.data.datasets[0].data = sortedData.map(d => d.temperature);
-    temperatureChart.update();
-
-    humidityChart.data.labels = labels;
-    humidityChart.data.datasets[0].data = sortedData.map(d => d.humidity);
-    humidityChart.update();
-
-    pm25Chart.data.labels = labels;
-    pm25Chart.data.datasets[0].data = sortedData.map(d => d.pm25 != null && d.pm25 !== -1 ? d.pm25 : null);
-    pm25Chart.update();
-
-    co2Chart.data.labels = labels;
-    co2Chart.data.datasets[0].data = sortedData.map(d => d.co2 != null && d.co2 !== 65535 && d.co2 !== -1 ? d.co2 : null);
-    co2Chart.update();
-
-    vocChart.data.labels = labels;
-    vocChart.data.datasets[0].data = sortedData.map(d => d.voc != null && d.voc !== -1 ? d.voc : null);
-    vocChart.update();
+    const labels = data.map(row => new Date(row.created_at).toLocaleTimeString());
+    updateChart(temperatureChart, labels, data.map(row => metricValue(row, 'temperature', 'temp')), CHART_DOMAIN.temperature);
+    updateChart(humidityChart, labels, data.map(row => metricValue(row, 'humidity', 'rh')), CHART_DOMAIN.humidity);
+    updateChart(pm25Chart, labels, data.map(row => metricValue(row, 'pm25', 'pm')), CHART_DOMAIN.pm25);
+    updateChart(co2Chart, labels, data.map(row => metricValue(row, 'co2', 'co2')), CHART_DOMAIN.co2);
+    updateChart(vocChart, labels, data.map(row => metricValue(row, 'voc', 'voc')), CHART_DOMAIN.voc);
 }
 
-function updateDataTable(data) {
-    const tbody = document.getElementById('table-body');
-    tbody.innerHTML = '';
-
-    const sortedData = [...data].sort((a, b) =>
-        new Date(b.created_at) - new Date(a.created_at)
-    );
-
-    sortedData.forEach(row => {
-        const tr = document.createElement('tr');
-        const pm = row.pm25 != null && row.pm25 !== -1 ? row.pm25 : (row.air_quality ?? '');
-        const co2v = row.co2 != null && row.co2 !== 65535 && row.co2 !== -1 ? row.co2 : (row.co2 === 65535 ? '—' : row.co2 ?? '');
-        const vocv = row.voc != null && row.voc !== -1 ? row.voc : '';
-        tr.innerHTML = `
-            <td>${formatTimestamp(row.created_at)}</td>
-            <td>${row.device_id}</td>
-            <td><strong>${formatValue(row.temperature, 1)} C</strong></td>
-            <td><strong>${formatValue(row.humidity, 1)}% RH</strong></td>
-            <td>${pm}</td>
-            <td>${co2v}</td>
-            <td>${vocv}</td>
-            <td>${row.air_quality ?? ''}</td>
-            <td>${row.alert_level ?? 0}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+function updateChart(chart, labels, values, domainConfig) {
+    chart.data.labels = labels.slice(-MAX_VISIBLE_SAMPLES);
+    chart.data.datasets[0].data = values.slice(-MAX_VISIBLE_SAMPLES);
+    const [min, max] = ChartUtils.calculateYAxisDomain(chart.data.datasets[0].data, domainConfig);
+    chart.options.scales.y.min = min;
+    chart.options.scales.y.max = max;
+    chart.update();
 }
 
-function exportToCsv() {
-    if (allData.length === 0) {
-        alert('No data to export. Load data first.');
+function metricValue(row, valueKey, healthKey) {
+    const health = row.sensor_health || {};
+    if (health[healthKey] && health[healthKey] !== 'OK') return null;
+    const value = Number(row[valueKey]);
+    return Number.isFinite(value) ? value : null;
+}
+
+function updateNoiseAlert() {
+    const alert = document.getElementById('noise-alert');
+    if (!alert) return;
+    if (!lastNoiseAt || Date.now() - lastNoiseAt > 30000) {
+        alert.style.display = 'none';
+        alert.textContent = '';
         return;
     }
+    const seconds = Math.floor((Date.now() - lastNoiseAt) / 1000);
+    alert.style.display = 'block';
+    alert.textContent = `Noise detected on ${lastNoiseMetric} ${seconds} seconds ago. The chart is holding the previous valid value.`;
+}
 
-    let csv = 'Timestamp,Device ID,Temperature (C),Humidity (% RH),PM2.5,CO2,VOC,Alert Level,Device Timestamp\n';
-
-    allData.forEach(row => {
-        const timestamp = formatTimestamp(row.created_at);
-        const pm = row.pm25 != null ? row.pm25 : '';
-        csv += `"${timestamp}","${row.device_id}",${row.temperature},${row.humidity},${pm},${row.co2 ?? ''},${row.voc ?? ''},${row.alert_level ?? 0},${row.timestamp_ms ?? ''}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sensor_data_${new Date().getTime()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-
-    console.log('CSV exported successfully');
+function setConnectionStatus(online) {
+    const badge = document.getElementById('connection-status');
+    if (!badge) return;
+    badge.textContent = online ? 'Connected' : 'Disconnected';
+    badge.className = online ? 'badge bg-success' : 'badge bg-danger';
 }
 
 function updateFooterTime() {
-    const now = new Date();
-    document.getElementById('footer-time').textContent = now.toLocaleString();
+    document.getElementById('footer-time').textContent = new Date().toLocaleString();
 }

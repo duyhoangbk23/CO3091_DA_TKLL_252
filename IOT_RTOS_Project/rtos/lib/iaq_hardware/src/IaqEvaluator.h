@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include "SensorTypes.h"
 #include "IAQTypes.h"
+#include "ThresholdConfig.h"
 
 // Layer 2: evaluate raw measurements -> SAFE / INTERVENE / ALARM
 // Adds hysteresis + minimum hold time + simple safety interlock
@@ -9,6 +10,8 @@ class IaqEvaluator {
 public:
   void begin(uint32_t holdMs = 5000);
   IaqState evaluate(const SensorSample& s);
+  void setConfig(const ThresholdConfig& cfg);
+  ThresholdConfig getConfig() const;
 
   // CO2
   uint16_t co2_safe = 1000;
@@ -40,6 +43,7 @@ public:
 
   // [Chưa xác minh] Nếu chưa có VOC index, dùng voc_raw làm "index giả".
   bool useVocRawAsIndex = true;
+  bool autoControlEnabled = true;
 
 private:
   uint32_t holdMs_ = 5000;

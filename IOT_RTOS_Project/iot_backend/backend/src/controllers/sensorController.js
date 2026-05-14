@@ -12,6 +12,13 @@ let latestData = {
     co2: 0,
     voc: 0,
     alert_level: 0,
+    sensor_health: { co2: 'MISSING', pm: 'MISSING', voc: 'MISSING', temp: 'MISSING', rh: 'MISSING' },
+    alerts: { co2: false, pm: false, voc: false, temp: false, rh: false },
+    devices: { hepa: false, vent: false, carbon: false, ac: false, humid: false },
+    auto_control_enabled: true,
+    config_version: null,
+    ack: null,
+    thresholds: null,
     timestamp_ms: 0,
     received_at: null,
     status: 'offline'
@@ -34,13 +41,20 @@ async function handleNewSensorData(data) {
         const voc = parseInt(data.voc, 10) || 0;
         latestData = {
             device_id: data.device_id || DEFAULT_DEVICE_ID,
-            temperature: parseFloat(data.temperature),
-            humidity: parseFloat(data.humidity),
+            temperature: data.temperature === null ? null : parseFloat(data.temperature),
+            humidity: data.humidity === null ? null : parseFloat(data.humidity),
             pm25,
             co2,
             voc,
             alert_level: parseInt(data.alert_level, 10) || 0,
             timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
+            sensor_health: data.sensor_health || latestData.sensor_health,
+            alerts: data.alerts || latestData.alerts,
+            devices: data.devices || latestData.devices,
+            auto_control_enabled: data.auto_control_enabled !== undefined ? data.auto_control_enabled : latestData.auto_control_enabled,
+            config_version: data.config_version ?? latestData.config_version,
+            ack: data.ack || latestData.ack,
+            thresholds: data.thresholds || latestData.thresholds,
             received_at: new Date().toISOString(),
             status: 'online'
         };
@@ -50,8 +64,8 @@ async function handleNewSensorData(data) {
         // Save to database with optional device_id separate from the sensor payload
         await sensorModel.insertSensorData({
             device_id: latestData.device_id,
-            temperature: latestData.temperature,
-            humidity: latestData.humidity,
+            temperature: latestData.temperature ?? 0,
+            humidity: latestData.humidity ?? 0,
             pm25: latestData.pm25,
             co2: latestData.co2,
             voc: latestData.voc,
