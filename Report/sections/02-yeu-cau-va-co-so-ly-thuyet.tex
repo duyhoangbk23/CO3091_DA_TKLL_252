@@ -20,6 +20,12 @@ Hệ thống theo dõi năm nhóm đại lượng chính: CO2, PM2.5/PM10, VOC, 
 
 Các mốc trên được dùng cho prototype điều khiển. Khi triển khai thật, nhóm cần hiệu chuẩn lại theo cảm biến thực tế, điều kiện phòng và tiêu chuẩn vận hành được chọn.
 
+\section{Giới hạn của ngưỡng IAQ prototype}
+
+Các ngưỡng trong báo cáo được dùng để mô phỏng hành vi điều khiển và đánh giá khả năng phản ứng của hệ thống. Chúng không được xem là tiêu chuẩn y tế tuyệt đối. Khi triển khai trong môi trường thật, nhóm cần đối chiếu với khuyến nghị chính thức, hiệu chuẩn cảm biến, đánh giá điều kiện phòng và điều chỉnh ngưỡng theo mục tiêu vận hành cụ thể.
+
+Đối với VOC, giá trị hiện tại là raw ADC hoặc index tương đối, do đó chỉ phù hợp để quan sát xu hướng và kích hoạt logic prototype. Muốn kết luận định lượng về chất lượng không khí, cảm biến VOC cần được hiệu chuẩn và ánh xạ sang đơn vị hoặc chỉ số có ý nghĩa hơn.
+
 \section{Yêu cầu chức năng}
 
 \begin{enumerate}[leftmargin=2em]

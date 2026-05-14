@@ -4,6 +4,22 @@ Các kết quả chính đạt được gồm mô hình cảm biến đa giao th
 
 Hướng phát triển tiếp theo là ổn định triển khai end-to-end với ESP32 thật, Mosquitto, backend, MySQL và dashboard; bổ sung test tự động cho pipeline phần cứng thật; hiệu chuẩn ngưỡng IAQ và VOC theo dữ liệu thực nghiệm; bổ sung bảo mật MQTT/API; và đánh giá hệ thống trong phòng học hoặc phòng làm việc trong thời gian dài.
 
+\section{Hướng triển khai thực nghiệm}
+
+Để chuyển prototype hiện tại thành một thử nghiệm hệ thống đầy đủ, nhóm có thể triển khai theo các bước sau:
+
+\begin{enumerate}[leftmargin=2em]
+    \item Chạy Docker stack gồm Mosquitto, MySQL, backend và frontend trên cùng một máy trong mạng LAN.
+    \item Cấu hình \texttt{local\_config.h} cho ESP32 với SSID, mật khẩu Wi-Fi, IP broker và \texttt{DEVICE\_ID}.
+    \item Flash firmware RTOS và kiểm tra ESP32 publish telemetry lên \texttt{iot/sensor/data}.
+    \item Kiểm tra backend cập nhật \texttt{/api/data}, ghi dữ liệu vào \texttt{sensor\_data} và hiển thị dashboard.
+    \item Gửi lệnh từ control panel, quan sát MQTT command, ACK/status và LED/thiết bị mô phỏng.
+    \item So sánh log cục bộ từ firmware tuần tự hoặc CSV với dữ liệu đã lưu trong MySQL để đối chiếu tính nhất quán.
+    \item Thu dữ liệu trong phòng thật theo nhiều khung giờ để đánh giá ngưỡng, độ trễ và độ ổn định.
+\end{enumerate}
+
+Kết quả thực nghiệm nên được dùng để hiệu chuẩn lại ngưỡng CO2, PM2.5, VOC, nhiệt độ và độ ẩm. Đặc biệt, VOC cần được hiệu chuẩn trước khi dùng như một chỉ số định lượng.
+
 \section{Giới hạn của prototype}
 
 Prototype hiện tại vẫn có một số giới hạn cần nêu rõ. LED xanh/đỏ đang mô phỏng thiết bị chấp hành và cảnh báo, chưa điều khiển tải thật. VOC đang là raw ADC hoặc index tương đối, chưa được hiệu chuẩn thành chỉ số chuẩn. Một số kiểm thử backend hiện dùng MQTT mock, vì vậy chưa xác nhận đầy đủ các yếu tố vật lý như Wi-Fi, broker thật, wiring cảm biến và độ trễ thiết bị. Hệ thống cũng chưa bổ sung xác thực/bảo mật cho MQTT và API. Những giới hạn này không làm mất giá trị thiết kế, nhưng là cơ sở để xác định bước triển khai thực nghiệm tiếp theo.

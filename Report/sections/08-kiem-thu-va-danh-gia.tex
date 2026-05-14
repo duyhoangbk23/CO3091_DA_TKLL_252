@@ -54,6 +54,23 @@ Kiểm thử tích hợp cần bao phủ hai pipeline:
 
 Các chỉ số đánh giá gồm tỷ lệ mẫu đo hợp lệ, độ trễ từ lúc vượt ngưỡng đến lúc output đổi trạng thái, số lần bật/tắt trong một khoảng thời gian, tỷ lệ thời gian ở vùng an toàn, khả năng vận hành khi mất server và độ ổn định của pipeline MQTT/API/web.
 
+\section{Tiêu chí đánh giá thành công}
+
+Một lần thử nghiệm hệ thống được xem là đạt nếu các tiêu chí cốt lõi sau được thỏa mãn:
+
+\begin{itemize}[leftmargin=2em]
+    \item Firmware không treo khi một cảm biến timeout hoặc trả dữ liệu thiếu.
+    \item Mỗi mẫu đo có timestamp, giá trị cảm biến và cờ tình trạng cảm biến rõ ràng.
+    \item Khi chỉ số vượt ngưỡng, output tương ứng đổi trạng thái theo đúng nguyên nhân.
+    \item Hysteresis và hold-time giảm hiện tượng bật/tắt liên tục quanh ngưỡng.
+    \item ESP32 publish telemetry đúng topic và đúng contract JSON.
+    \item Backend cập nhật được latest data, ghi được lịch sử vào MySQL và trả đúng API.
+    \item Dashboard hiển thị realtime/history và gửi được command qua backend.
+    \item ESP32 phản hồi ACK hoặc trạng thái sau khi nhận lệnh điều khiển.
+\end{itemize}
+
+Các tiêu chí này kết hợp cả phần nhúng, truyền thông, backend và dashboard, phù hợp với mục tiêu đánh giá một hệ thống IoT nhiều tầng thay vì chỉ kiểm tra từng file source riêng lẻ.
+
 \section{Rủi ro kỹ thuật}
 
 \begin{table}[H]

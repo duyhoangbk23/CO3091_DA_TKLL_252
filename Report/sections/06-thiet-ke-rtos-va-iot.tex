@@ -34,6 +34,28 @@ Payload telemetry chứa \texttt{device\_id}, nhiệt độ, độ ẩm, PM2.5, 
 
 Luồng control hỗ trợ cả lệnh legacy như \texttt{LED\_ON}, \texttt{HEPA\_ON} và lệnh có cấu trúc như \texttt{SET\_AUTO}, \texttt{SET\_DEVICE}, \texttt{GET\_THRESHOLDS}, \texttt{SET\_THRESHOLDS}. Khi auto-control đang bật, firmware từ chối manual device command để tránh override quyết định an toàn cục bộ.
 
+\section{Chính sách điều khiển tự động và thủ công}
+
+Hệ thống hỗ trợ hai chế độ điều khiển. Ở chế độ tự động, \texttt{IaqEvaluator} quyết định thiết bị nào cần bật dựa trên trạng thái IAQ và nguyên nhân gây cảnh báo. Ví dụ CO2 hoặc VOC kích hoạt thông gió, PM kích hoạt HEPA, VOC kích hoạt lọc than, nhiệt độ kích hoạt điều hòa và độ ẩm thấp kích hoạt tạo ẩm.
+
+Ở chế độ thủ công, dashboard có thể gửi lệnh điều khiển từng thiết bị thông qua backend và MQTT. Tuy nhiên, firmware chỉ chấp nhận các lệnh này khi auto-control đã được tắt. Cách làm này tránh tình huống người dùng vô tình tắt thiết bị xử lý trong khi môi trường vẫn đang ở trạng thái cần can thiệp hoặc cảnh báo.
+
+\begin{table}[H]
+    \centering
+    \caption{Chính sách auto/manual}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Chế độ & Nguồn quyết định & Chính sách an toàn \\
+        \midrule
+        Auto & \texttt{IaqEvaluator} và ngưỡng IAQ & Firmware tự điều khiển theo nguyên nhân, ưu tiên trạng thái cục bộ \\
+        Manual & Dashboard qua API/MQTT & Chỉ áp dụng khi auto-control tắt; lệnh được validate và ghi log \\
+        Threshold update & Dashboard gửi cấu hình mới & Firmware kiểm tra hợp lệ, lưu cấu hình và tăng \texttt{config\_version} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Sau khi xử lý lệnh, ESP32 có thể publish ACK hoặc trạng thái lên \texttt{iot/device/status}. ACK này giúp backend và dashboard biết lệnh đã được chấp nhận, bị từ chối hay gặp lỗi cấu hình.
+
 \section{Cơ chế vận hành khi mất kết nối}
 
 ESP32 không nên phụ thuộc hoàn toàn vào server. Khi MQTT hoặc Wi-Fi mất kết nối, thiết bị vẫn đọc cảm biến, đánh giá IAQ, điều khiển cục bộ và ghi log SPIFFS. Khi kết nối khôi phục, hệ thống có thể tiếp tục publish dữ liệu realtime; phần đồng bộ log lịch sử là hướng mở rộng.

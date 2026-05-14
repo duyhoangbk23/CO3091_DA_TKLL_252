@@ -47,6 +47,27 @@ Database dùng MySQL để lưu dữ liệu sensor theo thời gian và lịch s
 
 Với dữ liệu chuỗi thời gian, các cột \texttt{device\_id}, \texttt{timestamp} và \texttt{created\_at} được index để phục vụ truy vấn theo thiết bị và khoảng thời gian. Realtime không nên lấy trực tiếp từ database; backend giữ mẫu mới nhất trong RAM/cache để dashboard gọi nhanh qua \texttt{/api/data}, còn database phục vụ biểu đồ lịch sử, thống kê và phân tích sau.
 
+\section{Mô hình dữ liệu realtime và lịch sử}
+
+Backend tách hai nhu cầu dữ liệu khác nhau: realtime và lịch sử. Dữ liệu realtime là mẫu mới nhất nhận được từ MQTT, được giữ trong RAM để API \texttt{/api/data} trả nhanh cho dashboard. Dữ liệu lịch sử được ghi xuống MySQL và truy vấn qua \texttt{/api/history} hoặc \texttt{/api/stats}. Cách tách này giúp dashboard realtime không phụ thuộc trực tiếp vào tốc độ truy vấn database, đồng thời vẫn giữ được dữ liệu dài hạn để phân tích.
+
+\begin{table}[H]
+    \centering
+    \caption{Phân biệt các mốc thời gian trong hệ thống}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Trường & Nguồn tạo & Ý nghĩa \\
+        \midrule
+        \texttt{timestamp} / \texttt{timestamp\_ms} & ESP32 & Thời gian tương đối từ lúc thiết bị khởi động \\
+        \texttt{uptime\_ms} & ESP32 & Thời gian hoạt động của thiết bị theo millisecond \\
+        \texttt{received\_at} & Backend & Thời điểm backend nhận payload MQTT \\
+        \texttt{created\_at} & MySQL & Thời điểm record được ghi vào database \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Sự phân biệt này quan trọng khi đánh giá độ trễ: timestamp từ ESP32 phản ánh thời điểm đo tương đối, còn \texttt{received\_at} và \texttt{created\_at} phản ánh thời điểm dữ liệu đi qua server và database.
+
 \section{Dashboard web}
 
 Frontend được thiết kế bằng HTML/CSS/JavaScript, Bootstrap và Chart.js. Giao diện có ba nhóm màn hình: realtime dashboard, analytics/history và control panel. Realtime dashboard hiển thị CO2, PM2.5, VOC, nhiệt độ, độ ẩm, tình trạng cảm biến, cờ cảnh báo và trạng thái thiết bị. Analytics hiển thị biểu đồ theo thời gian và thống kê. Control panel gửi lệnh auto/manual, điều khiển từng thiết bị và cập nhật threshold qua API.

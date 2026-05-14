@@ -1,7 +1,5 @@
 Kiến trúc tổng thể được chia thành các tầng: cảm biến, thiết bị nhúng ESP32, truyền thông MQTT, backend/API, cơ sở dữ liệu và dashboard web. Thiết bị nhúng chịu trách nhiệm đo và phản ứng cục bộ. Backend chịu trách nhiệm nhận dữ liệu từ MQTT, chuẩn hóa payload, lưu lịch sử và cung cấp API. Dashboard web là giao diện quan sát, phân tích lịch sử và gửi lệnh điều khiển.
 
-Nguyên tắc thiết kế xuyên suốt là xử lý cục bộ trước, giám sát từ xa sau. ESP32 vẫn phải đọc cảm biến, đánh giá IAQ và điều khiển cảnh báo ngay cả khi Wi-Fi, MQTT hoặc server không khả dụng. Tầng IoT/backend/dashboard mở rộng khả năng quan sát và điều khiển từ xa, nhưng không thay thế cơ chế an toàn tại thiết bị.
-
 \section{Luồng dữ liệu}
 
 \begin{center}
@@ -27,6 +25,12 @@ Luồng điều khiển từ xa được thiết kế theo hướng:
 \begin{center}
 \texttt{Dashboard -> API -> MQTT control topic -> RTOS control task -> IaqController}
 \end{center}
+
+\section{Luận điểm thiết kế hệ thống}
+
+Nguyên tắc thiết kế xuyên suốt là xử lý cục bộ trước, giám sát từ xa sau. ESP32 vẫn phải đọc cảm biến, đánh giá IAQ và điều khiển cảnh báo ngay cả khi Wi-Fi, MQTT hoặc server không khả dụng. Tầng IoT/backend/dashboard mở rộng khả năng quan sát, lưu lịch sử và điều khiển từ xa, nhưng không thay thế cơ chế an toàn tại thiết bị.
+
+Với luận điểm này, các quyết định thiết kế được sắp xếp theo thứ tự ưu tiên: dữ liệu cảm biến phải được kiểm tra trước khi dùng; cảnh báo cục bộ phải hoạt động độc lập với server; lệnh từ dashboard phải đi qua chính sách an toàn; và database phục vụ phân tích lịch sử thay vì là điều kiện bắt buộc để thiết bị phản ứng.
 
 \section{Phân rã module}
 
