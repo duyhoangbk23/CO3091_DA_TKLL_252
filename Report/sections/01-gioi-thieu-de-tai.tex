@@ -1,6 +1,6 @@
 Đề tài xây dựng một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí trong nhà (Indoor Air Quality -- IAQ). Hệ thống dùng ESP32 làm nút nhúng trung tâm, thu thập dữ liệu từ nhiều loại cảm biến, đánh giá trạng thái môi trường theo thời gian thực, điều khiển thiết bị chấp hành cục bộ và định hướng gửi dữ liệu lên server để hiển thị trên dashboard web.
 
-Trong phạm vi source hiện tại, phần firmware phần cứng đã được hiện thực rõ nhất. Firmware đọc PMS7003 qua UART, đọc CO2 và nhiệt độ/độ ẩm qua RS485 Modbus, đọc VOC qua ADC, đóng gói thành \texttt{SensorSample}, đánh giá IAQ bằng \texttt{IaqEvaluator}, điều khiển LED/thiết bị mô phỏng qua \texttt{IaqController}, và ghi log CSV vào SPIFFS bằng \texttt{CsvLogger}. Các phần RTOS, MQTT, backend, database và frontend đang được định nghĩa theo module README và contract chung để mở rộng thành hệ thống hoàn chỉnh.
+Trong phạm vi source hiện tại, nhóm đã có hai nhánh firmware bổ trợ cho nhau. Nhánh \texttt{hardware/main} là prototype tuần tự dùng để đọc PMS7003 qua UART, đọc CO2 và nhiệt độ/độ ẩm qua RS485 Modbus, đọc VOC qua ADC, đánh giá IAQ, điều khiển LED/thiết bị mô phỏng và ghi CSV vào SPIFFS. Nhánh \texttt{rtos} là phiên bản PlatformIO/FreeRTOS, tách chức năng thành các task đọc cảm biến, xử lý dữ liệu, cảnh báo, MQTT và điều khiển từ xa. Ngoài tầng thiết bị, repository cũng đã có contract MQTT/JSON, backend Node.js/Express, schema MySQL, frontend dashboard tĩnh và một số kiểm thử backend mô phỏng MQTT.
 
 \section{Bối cảnh}
 
@@ -16,6 +16,26 @@ Phòng học và phòng làm việc kín thường có nguy cơ tích tụ CO2, 
     \item Thiết kế dashboard web theo dõi realtime, xem lịch sử và gửi lệnh điều khiển thiết bị.
 \end{itemize}
 
-\section{Phạm vi}
+\section{Phạm vi và hiện trạng}
 
-Báo cáo tập trung vào thiết kế tổng thể và hiện trạng source trong repository. Phần hardware/firmware được mô tả ở mức hiện thực. Phần RTOS, IoT, server, database và dashboard được trình bày theo thiết kế module, contract dữ liệu và hướng tích hợp vì trong repo hiện chủ yếu có README định hướng cho các phần này.
+Báo cáo tập trung vào thiết kế tổng thể, mô hình dữ liệu, luồng xử lý và hiện trạng prototype trong repository. Source code được dùng như bằng chứng triển khai cho các quyết định thiết kế, nhưng nội dung chính không đi theo hướng phân tích từng hàm hoặc từng file.
+
+\begin{table}[H]
+    \centering
+    \caption{Hiện trạng các module chính trong repository}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Module & Vai trò & Hiện trạng \\
+        \midrule
+        \texttt{hardware/main} & Prototype firmware tuần tự, đọc cảm biến, đánh giá IAQ, điều khiển LED, ghi CSV & Đã có source \\
+        \texttt{rtos} & Firmware RTOS, task đọc/xử lý/cảnh báo/MQTT/control & Đã có source PlatformIO \\
+        \texttt{common} & Contract MQTT topic và payload JSON dùng chung & Đã có contract \\
+        \texttt{iot\_backend/backend} & Express API, MQTT service, controller/model, test & Đã có source \\
+        \texttt{iot\_backend/database} & Schema MySQL cho telemetry và control log & Đã có schema \\
+        \texttt{iot\_backend/frontend} & Dashboard, analytics và control panel tĩnh & Đã có giao diện \\
+        \texttt{integration\_test} & Định hướng kiểm thử end-to-end; backend có test mô phỏng MQTT & Một phần đã có \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Giới hạn quan trọng của phạm vi hiện tại là hệ thống vẫn cần được kiểm thử end-to-end đầy đủ với ESP32 thật, broker thật, database thật và dashboard chạy cùng lúc. Vì vậy báo cáo phân biệt giữa phần đã hiện thực ở mức prototype/source và phần cần đánh giá thêm khi triển khai thực nghiệm.

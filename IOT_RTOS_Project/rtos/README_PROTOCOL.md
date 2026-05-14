@@ -1,83 +1,147 @@
 # RTOS MQTT Protocol
 
-## Publish Telemetry
+Tai lieu nay mo ta protocol MQTT dung boi `rtos/src/task_mqtt.cpp` va `rtos/src/task_control.cpp`. Contract chi tiet nam trong `../common/data_format.json`.
 
-`vTaskMQTT` publish len topic:
+## Publish telemetry
+
+`vTaskMQTT` publish len:
 
 ```text
 iot/sensor/data
 ```
 
-JSON payload:
+Payload mau:
 
 ```json
 {
   "device_id": "esp32_device",
   "temperature": 25.5,
   "humidity": 60.0,
+  "pm25": 12,
+  "co2": 480,
+  "voc": 320,
   "alert_level": 0,
-  "timestamp_ms": 170000
+  "timestamp": 123456789,
+  "uptime_ms": 123456,
+  "auto_control_enabled": true,
+  "config_version": 1,
+  "sensor_health": {
+    "co2": "OK",
+    "pm": "OK",
+    "voc": "OK",
+    "temp": "OK",
+    "rh": "OK"
+  },
+  "alerts": {
+    "co2": false,
+    "pm": false,
+    "voc": false,
+    "temp": false,
+    "rh": false
+  },
+  "devices": {
+    "hepa": false,
+    "vent": false,
+    "carbon": false,
+    "ac": false,
+    "humid": false
+  }
 }
 ```
 
 Nguon du lieu:
-- `temperature`: DHT22.
-- `humidity`: DHT22.
-- `alert_level`: do `vTaskDataProcess` tinh theo nguong trong `config.h`.
-- `timestamp_ms`: `esp_timer_get_time() / 1000`.
-- `device_id`: macro `DEVICE_ID` trong `config.h`.
 
-## Subscribe Control
+- `temperature`, `humidity`: SHTC3/RS485, fixed-point x10 doi sang float.
+- `pm25`: PMS7003 UART, `-1` neu thieu.
+- `co2`: CO2 RS485/Modbus, `65535` neu thieu.
+- `voc`: VOC analog/moving average.
+- `alert_level`: `vTaskDataProcess` tinh tu `IaqState`.
+- `timestamp`: `esp_timer_get_time()` theo microseconds.
 
-ESP32 subscribe topic:
+## Subscribe control
+
+ESP32 subscribe:
 
 ```text
 iot/device/control
 ```
 
-Backend publish:
+Lenh co cau truc:
 
 ```json
 {
   "device_id": "esp32_device",
-  "command": "LED_ON",
-  "timestamp": 1710000000000
+  "command": "SET_AUTO",
+  "enabled": true,
+  "command_id": "optional"
+}
+```
+
+Hoac:
+
+```json
+{
+  "device_id": "esp32_device",
+  "command": "SET_DEVICE",
+  "device": "hepa",
+  "state": true,
+  "command_id": "optional"
 }
 ```
 
 Lenh chinh:
-- `LED_ON`
-- `LED_OFF`
 
-Lenh test/noi bo:
-- `MUTE_ALARM`
-- `TEST_LED`
+- `GET_STATUS`, `GET_AUTO`
+- `SET_AUTO`
+- `SET_DEVICE`
+- `GET_THRESHOLDS`
+- `SET_THRESHOLDS`
+- `RESET_THRESHOLDS`
 - `REBOOT`
-- `GET_STATUS`
-- `LED_RED_ON`, `LED_RED_OFF`
-- `LED_YLW_ON`, `LED_YLW_OFF`
-- `LED_GRN_ON`, `LED_GRN_OFF`
-- `BLINK_RED`, `BLINK_YLW`, `BLINK_GRN`
+
+Lenh legacy/test van duoc chap nhan:
+
+- `LED_ON`, `LED_OFF`
+- `HEPA_ON/OFF`, `VENT_ON/OFF`, `CARBON_ON/OFF`, `AC_ON/OFF`, `HUMID_ON/OFF`
+
+## Publish device status / ACK
+
+Sau khi xu ly lenh, firmware publish ACK/status len:
+
+```text
+iot/device/status
+```
+
+Payload co cac field: `device_id`, `command`, `command_id`, `status`, `message`, `devices`, `auto_control_enabled`, `config_version`, va co the kem `thresholds`.
 
 ## Dataflow RTOS
 
 ```text
-vTaskSensorRead
+SensorHub
+  -> vTaskSensorRead
   -> xSensorQueue
-  -> vTaskDataProcess tinh alert_level
-  -> g_LatestData
-  -> vTaskMQTT publish JSON
+  -> vTaskDataProcess / IaqEvaluator
+  -> g_LatestData + g_iaq
+  -> vTaskMQTT publish telemetry
+
+Backend / Dashboard
+  -> iot/device/control
+  -> vTaskMQTT callback
+  -> xControlQueue
+  -> vTaskControl
+  -> IaqController / Preferences / ACK
 ```
 
-## Cau Hinh
+## Cau hinh
 
-Trong `config.h`, cap nhat:
+Uu tien cau hinh local trong `include/local_config.h`:
 
 ```cpp
+#define WIFI_SSID "MyNetwork"
+#define WIFI_PASS "mypassword"
+#define MQTT_BROKER_HOST "192.168.1.100"
+#define MQTT_BROKER_PORT 1883
 #define DEVICE_ID "esp32_device"
-#define MQTT_SERVER "192.168.1.100"
-#define MQTT_TOPIC_PUBLISH "iot/sensor/data"
-#define MQTT_TOPIC_COMMAND "iot/device/control"
 ```
 
 Khong dung `localhost` cho ESP32; dung IP LAN cua may chay Mosquitto/Docker host.

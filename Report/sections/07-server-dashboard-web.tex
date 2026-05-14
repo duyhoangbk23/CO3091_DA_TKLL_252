@@ -1,31 +1,91 @@
 \section{Backend server}
 
-Backend được thiết kế bằng Node.js và Express. Vai trò chính là nhận dữ liệu từ MQTT broker, validate payload, lưu dữ liệu lịch sử vào database và cung cấp API cho dashboard. README backend định hướng các endpoint chính: \texttt{GET /api/data}, \texttt{GET /api/history}, \texttt{POST /api/control}.
+Backend được xây dựng bằng Node.js và Express. Vai trò chính là làm gateway giữa MQTT, cơ sở dữ liệu và dashboard: nhận telemetry từ broker, chuẩn hóa payload theo contract chung, cập nhật trạng thái mới nhất trong RAM, lưu lịch sử vào MySQL và cung cấp REST API cho web.
+
+\begin{center}
+\texttt{MQTT service -> payload mapper -> latest cache -> model/database -> REST API}
+\end{center}
+
+Khi dashboard gửi lệnh điều khiển, backend validate request, publish payload xuống topic control và ghi lệnh vào \texttt{control\_log}. Nhờ đó luồng điều khiển có thể truy vết được ở tầng server.
 
 \begin{table}[H]
     \centering
-    \caption{API dự kiến cho dashboard}
+    \caption{API chính của backend}
     \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
         \toprule
         API & Chức năng & Nguồn/đích dữ liệu \\
         \midrule
         \texttt{GET /api/data} & Lấy trạng thái realtime mới nhất & RAM/cache backend \\
         \texttt{GET /api/history} & Lấy dữ liệu lịch sử theo khoảng thời gian & Database \\
-        \texttt{POST /api/control} & Nhận lệnh từ web và publish MQTT xuống ESP32 & MQTT topic control \\
+        \texttt{GET /api/stats} & Tính thống kê nhanh trên dữ liệu lịch sử & Database \\
+        \texttt{POST /api/control} & Nhận lệnh legacy và publish MQTT xuống ESP32 & MQTT topic control \\
+        \texttt{POST /api/control/auto} & Bật/tắt chế độ auto-control & MQTT topic control \\
+        \texttt{POST /api/control/device} & Điều khiển từng thiết bị khi manual mode & MQTT topic control \\
+        \texttt{GET/POST /api/control/thresholds} & Lấy hoặc cập nhật ngưỡng IAQ & MQTT topic control/status \\
+        \texttt{GET /api/control/history} & Lấy lịch sử lệnh điều khiển & Database \\
+        \texttt{GET /health} & Kiểm tra backend, database và MQTT & Runtime service \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
 \section{Cơ sở dữ liệu}
 
-README database đang mô tả MySQL để lưu dữ liệu sensor theo thời gian. Bảng dữ liệu cần có \texttt{device\_id}, timestamp, các chỉ số IAQ và trạng thái hợp lệ. Với dữ liệu chuỗi thời gian, cột \texttt{created\_at} hoặc \texttt{timestamp} cần được index để truy vấn lịch sử nhanh.
+Database dùng MySQL để lưu dữ liệu sensor theo thời gian và lịch sử lệnh điều khiển. Bảng \texttt{sensor\_data} lưu telemetry đã được backend chuẩn hóa; bảng \texttt{control\_log} lưu các lệnh backend đã gửi xuống MQTT.
 
-Realtime không nên lấy trực tiếp từ database. Backend nên giữ mẫu mới nhất trong RAM/cache để dashboard gọi nhanh qua \texttt{/api/data}; database phục vụ biểu đồ lịch sử, thống kê và phân tích sau.
+\begin{table}[H]
+    \centering
+    \caption{Thiết kế bảng dữ liệu chính}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Bảng & Cột chính & Vai trò \\
+        \midrule
+        \texttt{sensor\_data} & \texttt{device\_id}, \texttt{temperature}, \texttt{humidity}, \texttt{pm25}, \texttt{co2}, \texttt{voc}, \texttt{alert\_level}, \texttt{timestamp}, \texttt{created\_at} & Lưu lịch sử telemetry \\
+        \texttt{control\_log} & \texttt{device\_id}, \texttt{command}, \texttt{status}, \texttt{created\_at} & Truy vết lệnh điều khiển \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Với dữ liệu chuỗi thời gian, các cột \texttt{device\_id}, \texttt{timestamp} và \texttt{created\_at} được index để phục vụ truy vấn theo thiết bị và khoảng thời gian. Realtime không nên lấy trực tiếp từ database; backend giữ mẫu mới nhất trong RAM/cache để dashboard gọi nhanh qua \texttt{/api/data}, còn database phục vụ biểu đồ lịch sử, thống kê và phân tích sau.
 
 \section{Dashboard web}
 
-Frontend được thiết kế bằng HTML/CSS/JavaScript, Bootstrap và Chart.js. Dashboard cần có ba nhóm màn hình: realtime dashboard, analytics/history và control panel. Realtime dashboard hiển thị CO2, PM2.5, VOC, nhiệt độ, độ ẩm, vùng IAQ và trạng thái thiết bị. Analytics hiển thị biểu đồ theo thời gian. Control panel gửi lệnh bật/tắt hoặc override qua API.
+Frontend được thiết kế bằng HTML/CSS/JavaScript, Bootstrap và Chart.js. Giao diện có ba nhóm màn hình: realtime dashboard, analytics/history và control panel. Realtime dashboard hiển thị CO2, PM2.5, VOC, nhiệt độ, độ ẩm, tình trạng cảm biến, cờ cảnh báo và trạng thái thiết bị. Analytics hiển thị biểu đồ theo thời gian và thống kê. Control panel gửi lệnh auto/manual, điều khiển từng thiết bị và cập nhật threshold qua API.
+
+\section{Contract MQTT/JSON}
+
+Contract chung giúp RTOS, backend, database và dashboard hiểu cùng một payload. Telemetry từ ESP32 gồm các nhóm dữ liệu:
+
+\begin{itemize}[leftmargin=2em]
+    \item Dữ liệu đo: \texttt{temperature}, \texttt{humidity}, \texttt{pm25}, \texttt{co2}, \texttt{voc}.
+    \item Mức cảnh báo tổng hợp: \texttt{alert\_level}.
+    \item Sức khỏe cảm biến: \texttt{sensor\_health}.
+    \item Cờ cảnh báo theo nguyên nhân: \texttt{alerts}.
+    \item Trạng thái thiết bị xử lý: \texttt{devices}.
+    \item Trạng thái cấu hình: \texttt{auto\_control\_enabled}, \texttt{config\_version}.
+\end{itemize}
+
+Các giá trị thiếu được giữ nhất quán với firmware: PM2.5 dùng \texttt{-1}, CO2 dùng \texttt{65535}, nhiệt độ/độ ẩm có thể là \texttt{null}. Backend chịu trách nhiệm map payload này sang dữ liệu nội bộ và schema MySQL.
 
 \section{Luồng điều khiển web đến thiết bị}
 
-Khi người dùng nhấn nút điều khiển trên dashboard, frontend gọi \texttt{POST /api/control}. Backend validate lệnh, publish xuống \texttt{iot/device/control}. ESP32 nhận MQTT message, cập nhật trạng thái điều khiển hoặc override theo chính sách an toàn. Các lệnh từ web không nên bỏ qua cảnh báo cục bộ; firmware vẫn cần ưu tiên trạng thái \texttt{ALARM}.
+Khi người dùng nhấn nút điều khiển trên dashboard, frontend gọi API tương ứng. Backend validate lệnh, publish xuống \texttt{iot/device/control}. ESP32 nhận MQTT message, đưa payload vào control queue và để task điều khiển xử lý. Với lệnh thành công hoặc thất bại, ESP32 có thể publish ACK/status lên \texttt{iot/device/status}.
+
+\begin{table}[H]
+    \centering
+    \caption{Nhóm lệnh điều khiển thiết kế}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+        \toprule
+        Lệnh & Vai trò \\
+        \midrule
+        \texttt{GET\_STATUS}, \texttt{GET\_AUTO} & Lấy trạng thái hiện tại \\
+        \texttt{SET\_AUTO} & Bật/tắt chế độ điều khiển tự động \\
+        \texttt{SET\_DEVICE} & Điều khiển từng thiết bị khi ở manual mode \\
+        \texttt{GET\_THRESHOLDS} & Yêu cầu ESP32 gửi ngưỡng hiện tại \\
+        \texttt{SET\_THRESHOLDS} & Cập nhật ngưỡng IAQ và lưu cấu hình \\
+        \texttt{RESET\_THRESHOLDS} & Khôi phục ngưỡng mặc định \\
+        \texttt{REBOOT} & Khởi động lại thiết bị \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Chính sách an toàn nằm ở firmware: khi auto-control đang bật, các lệnh manual điều khiển thiết bị bị từ chối để tránh bỏ qua quyết định IAQ cục bộ. Cách này giữ dashboard là lớp điều khiển từ xa, nhưng không làm mất vai trò bảo vệ tại thiết bị.

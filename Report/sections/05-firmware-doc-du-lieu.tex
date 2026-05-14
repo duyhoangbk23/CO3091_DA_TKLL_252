@@ -1,6 +1,25 @@
 \section{Mẫu dữ liệu thống nhất}
 
-Firmware dùng \texttt{SensorSample} làm cấu trúc dữ liệu trung tâm. Mẫu đo chứa thời gian \texttt{ms}, các chỉ số PM, nhiệt độ x10, độ ẩm x10, CO2 ppm, VOC raw, VOC trung bình và cờ hợp lệ cho từng nhóm cảm biến. Các giá trị thiếu được mã hóa bằng sentinel như \texttt{-1}, \texttt{INT16\_MIN} hoặc \texttt{0xFFFF}.
+Firmware dùng \texttt{SensorSample} làm cấu trúc dữ liệu trung tâm ở tầng đọc cảm biến. Mẫu đo chứa thời gian \texttt{ms}, các chỉ số PM, nhiệt độ x10, độ ẩm x10, CO2 ppm, VOC raw, VOC trung bình và cờ hợp lệ cho từng nhóm cảm biến. Các giá trị thiếu được mã hóa bằng sentinel như \texttt{-1}, \texttt{INT16\_MIN} hoặc \texttt{0xFFFF}.
+
+Trong repository hiện có hai cách tổ chức firmware. Nhánh \texttt{hardware/main} chạy tuần tự trong Arduino \texttt{loop()} và phù hợp cho kiểm thử cảm biến, log CSV và quan sát hành vi cục bộ. Nhánh \texttt{rtos} tái sử dụng các khối phần cứng/IAQ nhưng bọc chúng trong mô hình task, queue và MQTT để tích hợp với backend.
+
+\begin{table}[H]
+    \centering
+    \caption{Mô hình xử lý dữ liệu tại thiết bị}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+        \toprule
+        Khối & Vai trò thiết kế \\
+        \midrule
+        Driver cảm biến & Đọc PMS7003, Modbus CO2/SHTC3 và VOC analog, kiểm tra lỗi giao thức \\
+        \texttt{SensorHub} & Gom nhiều nguồn đo thành một mẫu thống nhất \\
+        \texttt{SensorSample} & Chuẩn hóa đơn vị, sentinel và cờ hợp lệ \\
+        \texttt{IaqEvaluator} & Phân vùng IAQ, áp dụng hysteresis và hold-time \\
+        \texttt{IaqController} & Ánh xạ quyết định IAQ ra LED/thiết bị mô phỏng \\
+        \texttt{CsvLogger} & Ghi log cục bộ để kiểm thử khi chưa cần backend \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
 \begin{lstlisting}[style=engineering,caption={Luồng xử lý chính trong loop}]
 SensorSample s = g_hub.readSample();
@@ -23,6 +42,22 @@ g_csv.logToSpiffs(s);
 
 Sau khi phân vùng, evaluator sinh yêu cầu điều khiển: CO2/VOC kích hoạt thông gió, PM kích hoạt HEPA, VOC kích hoạt lọc than, nhiệt độ kích hoạt điều hòa, độ ẩm thấp kích hoạt tạo ẩm. Các output dùng hold-time 5000 ms để tránh bật/tắt liên tục.
 
+\begin{table}[H]
+    \centering
+    \caption{Mô hình trạng thái IAQ}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Trạng thái & Ý nghĩa & Hành động thiết kế \\
+        \midrule
+        \texttt{SAFE} & Chỉ số nằm trong vùng chấp nhận & Tiếp tục giám sát, không bật thiết bị xử lý \\
+        \texttt{INTERVENE} & Chỉ số bắt đầu xấu hoặc lệch khỏi vùng vận hành & Bật thiết bị xử lý theo nguyên nhân \\
+        \texttt{ALARM} & Chỉ số vượt ngưỡng cảnh báo & Bật xử lý và LED cảnh báo đỏ tương ứng \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Hysteresis giúp trạng thái không dao động liên tục khi giá trị đo nằm sát ngưỡng. Hold-time giữ output thêm một khoảng ngắn sau khi vừa kích hoạt, nhờ đó thiết bị mô phỏng không bật/tắt quá nhanh trong môi trường nhiễu.
+
 \section{Log và vận hành cục bộ}
 
-\texttt{CsvLogger} ghi dữ liệu vào SPIFFS tại \texttt{/log.csv}. Firmware hỗ trợ lệnh Serial \texttt{START}, \texttt{STOP}, \texttt{CLEAR}, \texttt{DUMP}, \texttt{INTERVAL=...} để phục vụ thí nghiệm. Nhờ đó nhóm có thể thu dữ liệu trước khi hoàn thiện phần MQTT/backend.
+\texttt{CsvLogger} ghi dữ liệu vào SPIFFS tại \texttt{/log.csv}. Firmware hỗ trợ lệnh Serial \texttt{START}, \texttt{STOP}, \texttt{CLEAR}, \texttt{DUMP}, \texttt{INTERVAL=...} để phục vụ thí nghiệm. Nhờ đó nhóm có thể thu dữ liệu cục bộ để đối chiếu với luồng RTOS/MQTT/backend khi kiểm thử tích hợp.
