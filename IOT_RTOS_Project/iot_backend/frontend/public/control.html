@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Control - Device Management</title>
+    <title>IoT Device Controller</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -11,11 +11,11 @@
 <body>
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1"><i class="fas fa-toggle-on"></i> Device Control</span>
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-toggle-on"></i> Device Controller</span>
             <div class="d-flex gap-2">
                 <a class="btn btn-sm btn-outline-light" href="index.html">Dashboard</a>
-                <a class="btn btn-sm btn-outline-light" href="analytics.html">Charts</a>
-                <a class="btn btn-sm btn-outline-light" href="control.html">Control</a>
+                <a class="btn btn-sm btn-outline-light" href="analytics.html">Sensor Diagram</a>
+                <a class="btn btn-sm btn-outline-light" href="control.html">Device Controller</a>
             </div>
             <span class="badge bg-success" id="connection-status">Connected</span>
         </div>
@@ -73,7 +73,7 @@
                                 <div class="device-icon"><i class="fas fa-filter"></i></div>
                                 <div class="device-copy">
                                     <div class="d-flex align-items-center justify-content-between gap-2">
-                                        <h6 class="mb-0">PM Filter</h6>
+                                        <h6 class="mb-0">HEPA Filter</h6>
                                         <span id="device-hepa-state" class="badge bg-secondary">OFF</span>
                                     </div>
                                     <p class="small text-muted mb-1">Fine dust filtration</p>

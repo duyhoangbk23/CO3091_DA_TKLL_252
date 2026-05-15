@@ -2,6 +2,7 @@ const sensorModel = require('../models/sensorModel');
 const logger = require('../logger/winston');
 
 const { DEFAULT_DEVICE_ID } = require('../config/device');
+const DEVICE_OFFLINE_TIMEOUT_MS = parseInt(process.env.DEVICE_OFFLINE_TIMEOUT_MS || '7000', 10);
 
 // In-memory storage for latest data (for real-time MQTT updates)
 let latestData = {
@@ -82,7 +83,28 @@ async function handleNewSensorData(data) {
  * @returns {object} Latest sensor data
  */
 function getLatestData() {
-    return latestData;
+    return withOnlineStatus(latestData);
+}
+
+function isDeviceOnline() {
+    return withOnlineStatus(latestData).status === 'online';
+}
+
+function withOnlineStatus(data) {
+    if (!data || !data.received_at) {
+        return { ...latestData, status: 'offline' };
+    }
+    const receivedAt = new Date(data.received_at).getTime();
+    const ageMs = Date.now() - receivedAt;
+    if (!Number.isFinite(receivedAt) || ageMs > DEVICE_OFFLINE_TIMEOUT_MS) {
+        return {
+            ...data,
+            status: 'offline',
+            offline_reason: `No telemetry for ${Math.max(0, Math.round(ageMs / 1000))} seconds`,
+            offline_age_ms: Number.isFinite(ageMs) ? ageMs : null
+        };
+    }
+    return { ...data, status: 'online', offline_reason: null, offline_age_ms: ageMs };
 }
 
 /**
@@ -113,6 +135,42 @@ async function getHistoricalData(limit = 100, hours = 24) {
         logger.error(`Error retrieving historical data: ${error.message}`);
         throw error;
     }
+}
+
+async function exportCsv(hours = 24) {
+    try {
+        if (hours > 365 * 24) {
+            throw new Error('Hours cannot exceed 8760');
+        }
+
+        const rows = await sensorModel.getExportData(hours);
+        const header = [
+            'id',
+            'device_id',
+            'temperature',
+            'humidity',
+            'pm25',
+            'co2',
+            'voc',
+            'alert_level',
+            'timestamp_ms',
+            'created_at'
+        ];
+        const lines = [header.join(',')];
+        rows.forEach(row => {
+            lines.push(header.map(key => csvCell(row[key])).join(','));
+        });
+        return lines.join('\n');
+    } catch (error) {
+        logger.error(`Error exporting sensor CSV: ${error.message}`);
+        throw error;
+    }
+}
+
+function csvCell(value) {
+    if (value === null || value === undefined) return '';
+    const text = value instanceof Date ? value.toISOString() : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 /**
@@ -154,7 +212,9 @@ function updateLatestData(data) {
 module.exports = {
     handleNewSensorData,
     getLatestData,
+    isDeviceOnline,
     getHistoricalData,
+    exportCsv,
     getStatistics,
     updateLatestData
 };

@@ -1,5 +1,6 @@
 const controlModel = require('../models/controlModel');
 const mqttService = require('../services/mqtt');
+const sensorController = require('./sensorController');
 const logger = require('../logger/winston');
 
 const CONTROL_COMMAND_MAP = {
@@ -59,6 +60,15 @@ async function sendControlCommand(deviceId, command) {
             throw new Error('Invalid command. Use ON or OFF');
         }
 
+        if (!sensorController.isDeviceOnline()) {
+            await controlModel.insertControlLog({
+                device_id: deviceId,
+                command: mqttCommand,
+                status: 'failed'
+            });
+            throwOfflineError();
+        }
+
         // Publish via MQTT
         const published = mqttService.publishControl(mqttCommand, deviceId);
         if (!published) {
@@ -96,13 +106,23 @@ async function publishStructuredCommand(deviceId, payload) {
         throw new Error('Missing device_id or command');
     }
 
+    const commandDescription = describeStructuredCommand(payload);
+    if (!sensorController.isDeviceOnline()) {
+        await controlModel.insertControlLog({
+            device_id: deviceId,
+            command: commandDescription,
+            status: 'failed'
+        });
+        throwOfflineError();
+    }
+
     const command_id = payload.command_id || `${payload.command}_${Date.now()}`;
     const published = mqttService.publishControl({ ...payload, command_id }, deviceId);
     if (!published) throw new Error('MQTT client not connected');
 
     await controlModel.insertControlLog({
         device_id: deviceId,
-        command: describeStructuredCommand(payload),
+        command: commandDescription,
         status: 'sent'
     });
 
@@ -121,6 +141,12 @@ function describeStructuredCommand(payload) {
         return `SET_AUTO ${payload.enabled ? 'ON' : 'OFF'}`;
     }
     return payload.command;
+}
+
+function throwOfflineError() {
+    const error = new Error('Device offline: no recent telemetry from ESP32');
+    error.status = 503;
+    throw error;
 }
 
 async function setAutoControl(deviceId, enabled) {

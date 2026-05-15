@@ -9,6 +9,7 @@ const router = express.Router();
  * Sensor Routes
  * GET  /api/data       - Get latest sensor data
  * GET  /api/history    - Get historical sensor data
+ * GET  /api/export.csv - Export historical sensor data as CSV
  * GET  /api/stats      - Get sensor statistics
  */
 
@@ -36,6 +37,18 @@ router.get('/history',
         const { limit, hours } = req.query;
         const result = await sensorController.getHistoricalData(limit, hours);
         res.json(result);
+    })
+);
+
+router.get('/export.csv',
+    validateRequest(schemas.exportQuery, 'query'),
+    asyncHandler(async (req, res) => {
+        const { hours } = req.query;
+        const csv = await sensorController.exportCsv(hours);
+        const label = hours === 1 ? '1h' : hours === 24 ? '1d' : '1w';
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="sensor_data_${label}.csv"`);
+        res.send(csv);
     })
 );
 

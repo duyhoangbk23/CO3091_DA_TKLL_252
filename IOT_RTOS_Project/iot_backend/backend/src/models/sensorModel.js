@@ -75,6 +75,30 @@ async function getHistoricalData(limit = 100, hours = 24) {
     }
 }
 
+async function getExportData(hours = 24) {
+    const db = getDatabase();
+    if (!db) {
+        logger.warn('Database not connected');
+        return [];
+    }
+
+    try {
+        const query = `
+            SELECT id, device_id, temperature, humidity, pm25, co2, voc, alert_level,
+                   timestamp AS timestamp_ms, created_at
+            FROM sensor_data
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+            ORDER BY created_at ASC
+        `;
+        const [results] = await db.query(query, [hours]);
+        logger.debug(`Retrieved ${results.length} export records`);
+        return results;
+    } catch (error) {
+        logger.error(`Database export query error: ${error.message}`);
+        throw error;
+    }
+}
+
 /**
  * Get statistics for sensor data
  * @param {number} hours - Time range in hours
@@ -151,6 +175,7 @@ async function getLatestByDevice(deviceId) {
 module.exports = {
     insertSensorData,
     getHistoricalData,
+    getExportData,
     getStatistics,
     getLatestByDevice
 };

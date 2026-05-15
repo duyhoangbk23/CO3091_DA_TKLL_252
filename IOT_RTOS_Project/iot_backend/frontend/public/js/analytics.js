@@ -6,9 +6,13 @@ let vocChart = null;
 let samples = [];
 let lastNoiseAt = 0;
 let lastNoiseMetric = '';
+let lastTelemetryKey = null;
+let offlineSince = null;
+let resetOnReconnect = false;
 
 const MAX_VISIBLE_SAMPLES = 20;
 const REFRESH_MS = 2000;
+const CHART_RESET_OFFLINE_MS = 30000;
 
 const CHART_DOMAIN = {
     temperature: { delta: 5, fallback: [20, 35] },
@@ -28,12 +32,48 @@ const NOISE_CONFIG = {
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeChartsWhenReady();
-    refreshFromDatabase();
+    setupExportControls();
+    hydrateFromDatabase();
     updateFooterTime();
     setInterval(refreshFromDatabase, REFRESH_MS);
     setInterval(updateNoiseAlert, 1000);
     setInterval(updateFooterTime, 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) hydrateFromDatabase();
+    });
 });
+
+function setupExportControls() {
+    const button = document.getElementById('export-csv-btn');
+    if (button) button.addEventListener('click', exportCsv);
+}
+
+async function exportCsv() {
+    const range = document.getElementById('export-range');
+    const status = document.getElementById('export-status');
+    const button = document.getElementById('export-csv-btn');
+    const hours = Number(range?.value || 24);
+    const label = hours === 1 ? '1h' : hours === 24 ? '1d' : '1w';
+
+    try {
+        if (status) status.textContent = 'Exporting...';
+        if (button) button.disabled = true;
+        const blob = await exportSensorCsv(hours);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sensor_data_${label}_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        if (status) status.textContent = 'CSV exported.';
+    } catch (error) {
+        if (status) status.textContent = `Export failed: ${error.message}`;
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
 
 function initializeChartsWhenReady() {
     if (typeof Chart === 'undefined') {
@@ -83,21 +123,84 @@ function createLineChart(canvasId, label, color, unit) {
     });
 }
 
+async function hydrateFromDatabase() {
+    try {
+        const latest = await fetchLatestData();
+        if (!latest || latest.status !== 'online') {
+            if (!offlineSince) offlineSince = Date.now();
+            if (latest?.offline_age_ms < CHART_RESET_OFFLINE_MS) {
+                await loadHistoricalWindow();
+            } else {
+                resetOnReconnect = true;
+            }
+            updateMissingAlerts(latest, true);
+            setConnectionStatus(false);
+            return;
+        }
+
+        await loadHistoricalWindow();
+        offlineSince = null;
+        resetOnReconnect = false;
+
+        updateMissingAlerts(latest, false);
+        setConnectionStatus(true);
+    } catch (error) {
+        console.error('Failed to hydrate chart data from database:', error);
+        setConnectionStatus(false);
+    }
+}
+
+async function loadHistoricalWindow() {
+    const rows = await fetchHistoricalData(MAX_VISIBLE_SAMPLES, 24);
+    const chronologicalRows = (rows || []).slice().reverse().map(normalizeTelemetry);
+    samples = normalizeRows(getLatestConsecutiveWindow(chronologicalRows));
+    lastTelemetryKey = getTelemetryKey(samples[samples.length - 1]) || null;
+    updateStatistics(samples);
+    updateCharts(samples);
+}
+
 async function refreshFromDatabase() {
     try {
-        const history = await fetchHistoricalData(MAX_VISIBLE_SAMPLES, 24);
-        samples = normalizeRows((history || [])
-            .map(normalizeTelemetry)
-            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)))
-            .slice(-MAX_VISIBLE_SAMPLES);
+        const latest = await fetchLatestData();
+        if (!latest || latest.status !== 'online') {
+            if (!offlineSince) offlineSince = Date.now();
+            if (Date.now() - offlineSince >= CHART_RESET_OFFLINE_MS) {
+                resetOnReconnect = true;
+            }
+            updateMissingAlerts(latest, true);
+            setConnectionStatus(false);
+            return;
+        }
+
+        if (resetOnReconnect) {
+            resetDiagram();
+            resetOnReconnect = false;
+        }
+
+        const telemetry = normalizeTelemetry(latest);
+        const key = getTelemetryKey(telemetry);
+        if (key && key !== lastTelemetryKey) {
+            samples.push(cleanIncomingSample(telemetry));
+            samples = samples.slice(-MAX_VISIBLE_SAMPLES);
+            lastTelemetryKey = key;
+        }
+        offlineSince = null;
 
         updateStatistics(samples);
         updateCharts(samples);
+        updateMissingAlerts(latest, false);
         setConnectionStatus(true);
     } catch (error) {
         console.error('Failed to load chart data from database:', error);
         setConnectionStatus(false);
     }
+}
+
+function resetDiagram() {
+    samples = [];
+    lastTelemetryKey = null;
+    updateStatistics(samples);
+    updateCharts(samples);
 }
 
 function normalizeTelemetry(row) {
@@ -114,7 +217,42 @@ function normalizeRows(rows) {
     });
 }
 
+function getLatestConsecutiveWindow(rows) {
+    const normalized = (rows || []).filter(Boolean);
+    let startIndex = 0;
+    for (let index = 1; index < normalized.length; index += 1) {
+        const previous = getTelemetryTime(normalized[index - 1]);
+        const current = getTelemetryTime(normalized[index]);
+        if (Number.isFinite(previous) && Number.isFinite(current) && current - previous > CHART_RESET_OFFLINE_MS) {
+            startIndex = index;
+        }
+    }
+    return normalized.slice(startIndex).slice(-MAX_VISIBLE_SAMPLES);
+}
+
+function getTelemetryKey(row) {
+    return row?.timestamp_ms || row?.received_at || row?.created_at || null;
+}
+
+function getTelemetryTime(row) {
+    if (!row) return NaN;
+    const parsed = new Date(row.received_at || row.created_at || row.timestamp).getTime();
+    if (Number.isFinite(parsed)) return parsed;
+    const timestampMs = Number(row.timestamp_ms);
+    if (Number.isFinite(timestampMs) && timestampMs > 0) return timestampMs;
+    return NaN;
+}
+
 function updateStatistics(data) {
+    if (!data.length) {
+        document.getElementById('stat-avg-temp').textContent = '-';
+        document.getElementById('stat-avg-humidity').textContent = '-';
+        document.getElementById('stat-avg-pm25').textContent = '-';
+        document.getElementById('stat-avg-co2').textContent = '-';
+        document.getElementById('stat-avg-voc').textContent = '-';
+        return;
+    }
+
     const avg = (values, digits = 1) => {
         const clean = ChartUtils.toFiniteNumbers(values);
         if (!clean.length) return '-';
@@ -152,6 +290,37 @@ function metricValue(row, valueKey, healthKey) {
     if (health[healthKey] && health[healthKey] !== 'OK') return null;
     const value = Number(row[valueKey]);
     return Number.isFinite(value) ? value : null;
+}
+
+function cleanIncomingSample(row) {
+    const previous = samples[samples.length - 1];
+    if (!previous) return row;
+    const next = { ...row };
+    Object.entries(NOISE_CONFIG).forEach(([metric, config]) => {
+        const value = Number(row[metric]);
+        const previousValue = Number(previous[metric]);
+        if (Number.isFinite(value) && Number.isFinite(previousValue) && Math.abs(value - previousValue) > config.maxDelta) {
+            next[metric] = previousValue;
+            lastNoiseAt = Date.now();
+            lastNoiseMetric = config.label;
+        }
+    });
+    return next;
+}
+
+function updateMissingAlerts(latest, allMissing) {
+    const health = latest?.sensor_health || {};
+    setMissingAlert('temperature-missing-alert', allMissing || health.temp !== 'OK');
+    setMissingAlert('humidity-missing-alert', allMissing || health.rh !== 'OK');
+    setMissingAlert('pm25-missing-alert', allMissing || health.pm !== 'OK');
+    setMissingAlert('co2-missing-alert', allMissing || health.co2 !== 'OK');
+    setMissingAlert('voc-missing-alert', allMissing || health.voc !== 'OK');
+}
+
+function setMissingAlert(id, show) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('show', Boolean(show));
 }
 
 function updateNoiseAlert() {
