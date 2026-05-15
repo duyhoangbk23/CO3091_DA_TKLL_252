@@ -1,41 +1,105 @@
-Đề tài xây dựng một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí trong nhà (Indoor Air Quality -- IAQ). Hệ thống dùng ESP32 làm nút nhúng trung tâm, thu thập dữ liệu từ nhiều loại cảm biến, đánh giá trạng thái môi trường theo thời gian thực, điều khiển thiết bị chấp hành cục bộ và định hướng gửi dữ liệu lên server để hiển thị trên dashboard web.
+Đề tài tập trung xây dựng một hệ thống IoT giám sát và hỗ trợ điều chỉnh chất lượng không khí trong phòng học. Hệ thống sử dụng ESP32 làm nút trung tâm để thu thập dữ liệu từ các cảm biến môi trường, đánh giá trạng thái chất lượng không khí theo thời gian thực và phát cảnh báo khi các thông số vượt ngưỡng cho phép.
 
-Trong phạm vi source hiện tại, nhóm đã có hai nhánh firmware bổ trợ cho nhau. Nhánh \texttt{hardware/main} là prototype tuần tự dùng để đọc PMS7003 qua UART, đọc CO2 và nhiệt độ/độ ẩm qua RS485 Modbus, đọc VOC qua ADC, đánh giá IAQ, điều khiển LED/thiết bị mô phỏng và ghi CSV vào SPIFFS. Nhánh \texttt{rtos} là phiên bản PlatformIO/FreeRTOS, tách chức năng thành các task đọc cảm biến, xử lý dữ liệu, cảnh báo, MQTT và điều khiển từ xa. Ngoài tầng thiết bị, repository cũng đã có contract MQTT/JSON, backend Node.js/Express, schema MySQL, frontend dashboard tĩnh và một số kiểm thử backend mô phỏng MQTT.
+Dữ liệu từ thiết bị được truyền về máy chủ để lưu trữ, xử lý và hiển thị trên dashboard web. Thông qua giao diện này, người dùng có thể theo dõi các thông số môi trường, xem dữ liệu lịch sử và gửi lệnh điều khiển thiết bị từ xa. Ngoài ra, hệ thống cũng hỗ trợ điều khiển cục bộ nhằm mô phỏng hoạt động của các thiết bị cải thiện chất lượng không khí như quạt thông gió, máy lọc không khí hoặc đèn cảnh báo.
 
+Với cách tiếp cận này, đề tài hướng đến việc xây dựng một mô hình hệ thống IoT hoàn chỉnh, bao gồm các chức năng thu thập dữ liệu, truyền thông, lưu trữ, giám sát và điều khiển, phù hợp với bài toán theo dõi chất lượng không khí trong môi trường phòng học.
 \section{Bối cảnh}
 
-Phòng học và phòng làm việc kín thường có nguy cơ tích tụ CO2, bụi mịn, VOC, nhiệt độ cao hoặc độ ẩm không phù hợp. Các yếu tố này ảnh hưởng đến sức khỏe, sự tập trung và mức độ thoải mái của người sử dụng. Việc giám sát thủ công không đủ liên tục, trong khi hệ thống IoT có thể đo, cảnh báo và điều khiển tự động theo trạng thái thực tế.
+Phòng học là không gian mà học sinh và giáo viên sử dụng trong phần lớn thời gian trong
+ngày, vì vậy chất lượng không khí trong nhà (Indoor Air Quality -- IAQ) ảnh hưởng trực
+tiếp đến sức khỏe, mức độ tập trung và hiệu quả học tập. Theo Tổ chức Y tế Thế giới,
+nhiều chất ô nhiễm trong nhà như carbon monoxide, formaldehyde, nitrogen dioxide,
+benzene và một số hợp chất hữu cơ có thể gây rủi ro đáng kể đối với sức khỏe khi xuất
+hiện trong không gian kín ở nồng độ không mong muốn \cite{whoiaq}. Đối với môi trường
+học đường, Cơ quan Bảo vệ Môi trường Hoa Kỳ cũng chỉ ra rằng IAQ kém có thể gây triệu
+chứng sức khỏe cấp tính, làm tăng tình trạng vắng học và làm suy giảm khả năng thực
+hiện các nhiệm vụ trí óc như tập trung, tính toán và ghi nhớ \cite{epaiaqstudent}.
+
+Nhiều nghiên cứu cho thấy điều kiện thông gió kém, nồng độ CO\textsubscript{2} cao và sự
+tích tụ bụi mịn có liên quan đến sự suy giảm hiệu quả học tập. Pulimeno và cộng sự nhấn
+mạnh rằng lớp học đông người, quá nóng và thông gió kém thường dẫn đến gia tăng
+CO\textsubscript{2} cùng các vấn đề về sức khỏe, sự thoải mái và hiệu suất học tập
+\cite{pulimeno2020}. Trong một tổng quan định lượng, Wargocki và cộng sự ước tính rằng
+việc giảm nồng độ CO\textsubscript{2} trong lớp học từ khoảng 2100 ppm xuống 900 ppm có
+thể cải thiện tốc độ thực hiện các bài kiểm tra và nhiệm vụ học tập khoảng 12\%, đồng
+thời giảm tỷ lệ lỗi khoảng 2\% \cite{wargocki2020}. Khảo sát của Canha và cộng sự tại
+9 phòng học cũng cho thấy nhiều tiết học vượt ngưỡng khuyến nghị về nhiệt độ, PM10 và
+CO\textsubscript{2}, qua đó cho thấy nhu cầu giám sát liên tục trong môi trường lớp học
+\cite{canha2024}.
+
+Trong bối cảnh đó, các hệ thống IoT có thể hỗ trợ đo lường, lưu trữ, phân tích và theo
+dõi chất lượng không khí theo thời gian thực. Các nghiên cứu gần đây đã đề xuất việc áp
+dụng IoT và học máy vào quản lý chất lượng không khí lớp học \cite{renold2025}, đồng
+thời cho thấy các chiến lược thông gió điều khiển theo nhu cầu có thể giúp giảm vận
+hành không cần thiết và tiết kiệm năng lượng \cite{merema2018}. Vì vậy, việc xây dựng
+một hệ thống giám sát và cảnh báo IAQ sử dụng cảm biến và IoT là một hướng tiếp cận phù
+hợp cho môi trường phòng học.
 
 \section{Mục tiêu}
 
+Mục tiêu của đề tài là thiết kế và xây dựng một hệ thống IoT giám sát chất lượng không
+khí trong phòng học, có khả năng thu thập dữ liệu từ nhiều loại cảm biến, xử lý trên vi
+điều khiển ESP32, truyền dữ liệu lên máy chủ và hiển thị trực quan trên dashboard web.
+ESP32 phù hợp với hướng tiếp cận này nhờ tích hợp kết nối không dây và đủ tài nguyên để
+xử lý nhiều giao tiếp cảm biến trên cùng một thiết bị \cite{esp32soc}; trong khi đó,
+MQTT là giao thức publish/subscribe nhẹ, phù hợp với luồng dữ liệu giữa thiết bị và
+backend trong hệ thống IoT \cite{oasismqtt,mqttorg}.
+
+Cụ thể, đề tài hướng đến các mục tiêu sau:
+
 \begin{itemize}[leftmargin=2em]
-    \item Thiết kế phần cứng đo IAQ dựa trên ESP32 và các cảm biến phổ biến.
-    \item Viết firmware đọc dữ liệu đa giao thức, chuẩn hóa mẫu đo và xử lý lỗi cảm biến.
-    \item Thiết kế tầng RTOS để tách các chức năng đọc cảm biến, xử lý, điều khiển, log và truyền MQTT.
-    \item Thiết kế luồng IoT gửi dữ liệu từ ESP32 lên backend, lưu dữ liệu lịch sử và cung cấp API cho dashboard.
-    \item Thiết kế dashboard web theo dõi realtime, xem lịch sử và gửi lệnh điều khiển thiết bị.
+    \item Thiết kế phần cứng đo IAQ trong phòng học dựa trên ESP32 và các cảm biến phổ
+    biến, phục vụ thu thập CO\textsubscript{2}, bụi mịn, nhiệt độ, độ ẩm và chỉ số VOC.
+    \item Xây dựng firmware nhúng cho ESP32 có khả năng đọc dữ liệu từ nhiều cảm biến,
+    chuẩn hóa mẫu đo và phát hiện các trạng thái bất thường như lỗi đọc, mất kết nối
+    hoặc dữ liệu thiếu.
+    \item Tổ chức firmware theo kiến trúc RTOS, trong đó các chức năng đọc cảm biến, xử
+    lý dữ liệu, điều khiển thiết bị và truyền thông MQTT được tách thành các tác vụ độc
+    lập.
+    \item Xây dựng luồng truyền thông IoT từ thiết bị lên backend, bao gồm tiếp nhận dữ
+    liệu qua MQTT, lưu trữ lịch sử và cung cấp API cho dashboard.
+    \item Thiết kế dashboard web cho phép theo dõi dữ liệu realtime, xem lại lịch sử đo,
+    quan sát trạng thái hệ thống và gửi lệnh điều khiển xuống thiết bị.
+    \item Đánh giá hoạt động của hệ thống ở mức nguyên mẫu thông qua khả năng đo, truyền,
+    lưu trữ, hiển thị và phản hồi lệnh điều khiển.
 \end{itemize}
 
 \section{Phạm vi và hiện trạng}
 
-Báo cáo tập trung vào thiết kế tổng thể, mô hình dữ liệu, luồng xử lý và hiện trạng prototype trong repository. Source code được dùng như bằng chứng triển khai cho các quyết định thiết kế, nhưng nội dung chính không đi theo hướng phân tích từng hàm hoặc từng file.
+Báo cáo tập trung vào nguyên mẫu gồm một nút ESP32 thu thập dữ liệu từ các cảm biến
+chất lượng không khí, xử lý cục bộ và truyền telemetry lên hệ thống máy chủ. Ở phía
+server, backend tiếp nhận dữ liệu qua MQTT, lưu lịch sử vào MySQL và cung cấp API cho
+dashboard web. Trọng tâm của báo cáo là mô tả kiến trúc hệ thống, luồng dữ liệu, cơ chế
+xử lý trên firmware RTOS và sự phối hợp giữa các thành phần nhúng, backend và giao diện
+người dùng.
+
+Ở thời điểm hiện tại, hệ thống đã đạt mức nguyên mẫu vận hành tương đối đầy đủ: firmware
+RTOS đã được tổ chức theo mô hình đa tác vụ; contract MQTT/JSON giữa thiết bị và backend
+đã được xác định; backend và cơ sở dữ liệu đã hỗ trợ lưu trữ và truy xuất dữ liệu; còn
+dashboard đã có các chức năng giám sát và điều khiển cơ bản. Tuy nhiên, phạm vi hiện
+tại vẫn dừng ở mức kiểm chứng kỹ thuật và chưa mở rộng sang các yêu cầu triển khai thực
+địa như thiết bị chấp hành công suất thực, vận hành dài hạn trong phòng học thật, hay
+quản trị nhiều thiết bị ở quy mô lớn.
 
 \begin{table}[H]
     \centering
-    \caption{Hiện trạng các module chính trong repository}
+    \caption{Hiện trạng các thành phần chính của nguyên mẫu}
     \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
         \toprule
-        Module & Vai trò & Hiện trạng \\
+        Thành phần & Vai trò & Hiện trạng \\
         \midrule
-        \texttt{hardware/main} & Prototype firmware tuần tự, đọc cảm biến, đánh giá IAQ, điều khiển LED, ghi CSV & Đã có source \\
-        \texttt{rtos} & Firmware RTOS, task đọc/xử lý/cảnh báo/MQTT/control & Đã có source PlatformIO \\
-        \texttt{common} & Contract MQTT topic và payload JSON dùng chung & Đã có contract \\
-        \texttt{iot\_backend/backend} & Express API, MQTT service, controller/model, test & Đã có source \\
-        \texttt{iot\_backend/database} & Schema MySQL cho telemetry và control log & Đã có schema \\
-        \texttt{iot\_backend/frontend} & Dashboard, analytics và control panel tĩnh & Đã có giao diện \\
-        \texttt{integration\_test} & Định hướng kiểm thử end-to-end; backend có test mô phỏng MQTT & Một phần đã có \\
+        \texttt{rtos} & Firmware RTOS cho ESP32, xử lý cảm biến, cảnh báo, MQTT và điều khiển & Đã hiện thực \\
+        \texttt{common} & Contract MQTT topic và payload JSON dùng chung & Đã xác định \\
+        \texttt{iot\_backend/backend} & Tiếp nhận MQTT, cung cấp API và xử lý điều khiển & Đã hiện thực \\
+        \texttt{iot\_backend/database} & Lưu telemetry và nhật ký điều khiển & Đã có schema \\
+        \texttt{iot\_backend/frontend} & Dashboard giám sát và control panel & Đã hiện thực giao diện \\
+        \texttt{integration\_test} & Kiểm thử tích hợp một phần pipeline dữ liệu và điều khiển & Đã có một phần \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Giới hạn quan trọng của phạm vi hiện tại là hệ thống vẫn cần được kiểm thử end-to-end đầy đủ với ESP32 thật, broker thật, database thật và dashboard chạy cùng lúc. Vì vậy báo cáo phân biệt giữa phần đã hiện thực ở mức prototype/source và phần cần đánh giá thêm khi triển khai thực nghiệm.
+Một giới hạn quan trọng của hiện trạng hiện nay là hệ thống vẫn cần được kiểm thử
+end-to-end đầy đủ với ESP32 thật, broker thật, cơ sở dữ liệu thật và dashboard vận hành
+đồng thời trong điều kiện sử dụng liên tục. Vì vậy, báo cáo phân biệt rõ giữa phần đã
+được hiện thực và kiểm chứng ở mức nguyên mẫu trong source code với phần còn cần đánh
+giá thêm khi triển khai thực nghiệm trong môi trường thực tế.

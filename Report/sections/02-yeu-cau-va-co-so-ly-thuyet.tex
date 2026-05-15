@@ -1,43 +1,116 @@
-\section{Các đại lượng giám sát IAQ}
+\section{Yêu cầu và cơ sở lý thuyết}
 
-Hệ thống theo dõi năm nhóm đại lượng chính: CO2, PM2.5/PM10, VOC, nhiệt độ và độ ẩm. CO2 phản ánh mức thông gió và mật độ người trong phòng. PM2.5/PM10 phản ánh bụi mịn. VOC phản ánh hợp chất hữu cơ bay hơi từ vật liệu, hóa chất hoặc hoạt động sinh hoạt. Nhiệt độ và độ ẩm ảnh hưởng đến tiện nghi nhiệt và cảm nhận môi trường.
+\subsection{Các đại lượng giám sát IAQ}
 
-\begin{table}[H]
-    \centering
-    \caption{Mốc vận hành tham khảo cho hệ thống IAQ}
-    \begin{tabularx}{\textwidth}{>{\bfseries}l X X X}
-        \toprule
-        Chỉ số & An toàn & Cần can thiệp & Cảnh báo \\
-        \midrule
-        CO2 & Dưới 1000 ppm & 1000--1500 ppm & Trên 1500 ppm \\
-        PM2.5 & Dưới 15 \(\mu g/m^3\) & 15--35 \(\mu g/m^3\) & Trên 35 \(\mu g/m^3\) \\
-        VOC & Dưới 500 & 500--1000 & Trên 1000 \\
-        Nhiệt độ & Dưới 28 \(^{\circ}C\) & 28--32 \(^{\circ}C\) & Trên 32 \(^{\circ}C\) \\
-        Độ ẩm & 30--50\%RH & 25--30\%RH hoặc 50--60\%RH & Dưới 25\%RH hoặc trên 60\%RH \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+Trong phạm vi đề tài, hệ thống tập trung theo dõi năm nhóm đại lượng chính gồm
+CO\textsubscript{2}, bụi mịn, VOC, nhiệt độ và độ ẩm. Các đại lượng này được lựa chọn
+vì phản ánh đồng thời tình trạng thông gió, mức độ ô nhiễm không khí và điều kiện tiện
+nghi trong phòng học.
 
-Các mốc trên được dùng cho prototype điều khiển. Khi triển khai thật, nhóm cần hiệu chuẩn lại theo cảm biến thực tế, điều kiện phòng và tiêu chuẩn vận hành được chọn.
+CO\textsubscript{2} được sử dụng như một chỉ báo gián tiếp của mức độ thông gió và mật
+độ người trong phòng. Khi lớp học đông người hoặc thông gió kém, nồng độ
+CO\textsubscript{2} có xu hướng tăng dần, do đó việc theo dõi đại lượng này giúp hệ
+thống nhận biết thời điểm cần tăng thông gió hoặc phát cảnh báo. Đây cũng là chỉ báo
+được sử dụng phổ biến trong các tài liệu hướng dẫn IAQ cho trường học
+\cite{epaiaqschools,alaiaqschools}.
 
-\section{Giới hạn của ngưỡng IAQ prototype}
+Bụi mịn được biểu diễn qua các chỉ số PM1.0, PM2.5 và PM10. Trong hệ thống này, cảm
+biến PMS7003 có khả năng đọc cả ba chỉ số, tuy nhiên pipeline IoT hiện tại ưu tiên sử
+dụng PM2.5 làm chỉ số bụi chính để publish MQTT, lưu cơ sở dữ liệu và hiển thị trên
+dashboard. PM2.5 được lựa chọn vì liên quan trực tiếp đến nguy cơ sức khỏe và thường
+được dùng trong các khuyến nghị chất lượng không khí \cite{whoaqg2021}.
 
-Các ngưỡng trong báo cáo được dùng để mô phỏng hành vi điều khiển và đánh giá khả năng phản ứng của hệ thống. Chúng không được xem là tiêu chuẩn y tế tuyệt đối. Khi triển khai trong môi trường thật, nhóm cần đối chiếu với khuyến nghị chính thức, hiệu chuẩn cảm biến, đánh giá điều kiện phòng và điều chỉnh ngưỡng theo mục tiêu vận hành cụ thể.
+VOC phản ánh sự hiện diện của các hợp chất hữu cơ bay hơi phát sinh từ vật liệu xây
+dựng, sơn, dung môi, hóa chất vệ sinh hoặc hoạt động sinh hoạt trong phòng. Một số hợp
+chất thuộc nhóm này đã được WHO xếp vào nhóm chất ô nhiễm trong nhà cần quan tâm
+\cite{whoiaq}. Trong nguyên mẫu hiện tại, giá trị VOC được đọc ở dạng \textit{raw/index}
+tương đối, do đó chủ yếu được dùng để theo dõi xu hướng và kích hoạt logic cảnh báo ở
+mức prototype.
 
-Đối với VOC, giá trị hiện tại là raw ADC hoặc index tương đối, do đó chỉ phù hợp để quan sát xu hướng và kích hoạt logic prototype. Muốn kết luận định lượng về chất lượng không khí, cảm biến VOC cần được hiệu chuẩn và ánh xạ sang đơn vị hoặc chỉ số có ý nghĩa hơn.
+Nhiệt độ và độ ẩm không trực tiếp đại diện cho nồng độ chất ô nhiễm, nhưng ảnh hưởng
+rõ rệt đến tiện nghi nhiệt, cảm nhận môi trường và điều kiện vận hành của lớp học. Vì
+vậy, hai đại lượng này được đưa vào hệ thống nhằm hỗ trợ đánh giá tổng thể điều kiện
+môi trường và làm cơ sở cho các quyết định điều khiển cục bộ.
 
-\section{Yêu cầu chức năng}
+\subsection{Định hướng giám sát và cảnh báo}
+
+Mục tiêu của hệ thống không phải là thay thế thiết bị đo kiểm chuyên dụng hay đưa ra kết
+luận y tế tuyệt đối về chất lượng không khí. Đề tài hướng đến việc xây dựng một nguyên
+mẫu IoT có khả năng giám sát liên tục, phát hiện xu hướng bất thường và hỗ trợ điều
+khiển cục bộ. Vì vậy, dữ liệu đo được được sử dụng theo hai hướng chính: hiển thị trạng
+thái môi trường theo thời gian thực và kích hoạt cảnh báo hoặc thiết bị chấp hành khi
+đại lượng vượt khỏi vùng vận hành mong muốn.
+
+Đối với CO\textsubscript{2}, PM2.5, nhiệt độ và độ ẩm, hệ thống có thể so sánh trực
+tiếp với các ngưỡng cấu hình trong firmware. Đối với VOC, do giá trị hiện tại mang tính
+tương đối, hệ thống chủ yếu dùng để quan sát xu hướng và kích hoạt cảnh báo ở mức
+nguyên mẫu. Cách tiếp cận này phù hợp với phạm vi đồ án, vốn tập trung vào kiến trúc đo,
+truyền dữ liệu, xử lý lỗi, hiển thị và điều khiển hơn là chứng nhận IAQ theo tiêu chuẩn
+y tế hoặc công trình.
+
+Trong firmware RTOS, các cặp ngưỡng bật/tắt như \texttt{co2\_on/co2\_off},
+\texttt{pm\_on/pm\_off}, \texttt{voc\_on/voc\_off}, \texttt{temp\_high\_on/temp\_high\_off}
+và các ngưỡng độ ẩm thấp/cao được dùng cùng cơ chế hysteresis để tránh thiết bị bật tắt
+liên tục khi giá trị đo dao động gần ngưỡng. Các tham số này có thể được hiệu chỉnh
+trong quá trình kiểm thử thông qua backend hoặc giao diện điều khiển.
+
+\subsection{Yêu cầu chức năng}
+
+Từ mục tiêu giám sát IAQ và điều khiển thiết bị trong phòng học, hệ thống cần đáp ứng
+các yêu cầu chức năng sau:
 
 \begin{enumerate}[leftmargin=2em]
-    \item ESP32 đọc dữ liệu cảm biến theo chu kỳ và tạo mẫu đo có dấu thời gian.
-    \item Firmware biểu diễn được dữ liệu thiếu hoặc lỗi bằng cờ hợp lệ, tránh dùng giá trị sai cho quyết định điều khiển.
-    \item Hệ thống phân vùng từng chỉ số thành \texttt{SAFE}, \texttt{INTERVENE} và \texttt{ALARM}.
-    \item Điều khiển thiết bị cục bộ theo nguyên nhân: thông gió cho CO2/VOC, HEPA cho bụi mịn, than hoạt tính cho VOC, điều hòa cho nhiệt độ, tạo ẩm cho độ ẩm thấp.
-    \item Ghi log CSV cục bộ để kiểm thử và đối chiếu.
-    \item Gửi dữ liệu lên backend qua MQTT trong phiên bản IoT hoàn chỉnh.
-    \item Dashboard hiển thị realtime, lịch sử và hỗ trợ gửi lệnh điều khiển.
+    \item ESP32 đọc dữ liệu cảm biến theo chu kỳ và tạo mẫu đo có dấu thời gian tương
+    đối trong quá trình vận hành.
+    \item Firmware thu thập được dữ liệu từ nhiều cảm biến sử dụng các giao tiếp khác
+    nhau, bao gồm cảm biến bụi, CO\textsubscript{2}, VOC, nhiệt độ và độ ẩm.
+    \item Dữ liệu cảm biến được chuẩn hóa về một mô hình telemetry thống nhất trước khi
+    đưa vào các khối xử lý, điều khiển hoặc truyền thông MQTT.
+    \item Firmware biểu diễn được trạng thái dữ liệu thiếu, lỗi đọc hoặc mất kết nối để
+    tránh sử dụng giá trị không đáng tin cậy cho quyết định điều khiển.
+    \item Hệ thống đánh giá từng nhóm đại lượng IAQ dựa trên ngưỡng cấu hình và xác
+    định nguyên nhân gây cảnh báo.
+    \item Hệ thống điều khiển thiết bị cục bộ theo nguyên nhân phát hiện được, chẳng
+    hạn thông gió cho CO\textsubscript{2}/VOC, lọc bụi cho PM2.5, điều hòa cho nhiệt
+    độ hoặc tạo ẩm khi độ ẩm thấp.
+    \item ESP32 gửi telemetry lên backend thông qua MQTT theo định dạng JSON thống nhất.
+    \item Backend tiếp nhận telemetry, kiểm tra định dạng dữ liệu, lưu lịch sử vào cơ sở
+    dữ liệu và cung cấp API cho dashboard.
+    \item Dashboard web hiển thị dữ liệu realtime, biểu đồ lịch sử, trạng thái cảm biến,
+    trạng thái điều khiển tự động và các cảnh báo đang kích hoạt.
+    \item Dashboard cho phép bật/tắt chế độ tự động, điều khiển thủ công từng thiết bị
+    khi ở manual mode và cập nhật ngưỡng điều khiển của hệ thống.
 \end{enumerate}
 
-\section{Yêu cầu phi chức năng}
+\subsection{Yêu cầu phi chức năng}
 
-Firmware cần nhẹ, ổn định trên ESP32 và tránh làm treo vòng lặp khi cảm biến mất kết nối. Các driver có timeout, dữ liệu số thực được ưu tiên lưu dạng fixed-point x10, và tầng điều khiển dùng hysteresis/hold-time để giảm bật tắt liên tục. Phần server cần validate dữ liệu MQTT/API, tách cấu hình qua biến môi trường và lưu lịch sử theo timestamp để truy vấn dashboard.
+Bên cạnh các chức năng chính, hệ thống cần đáp ứng một số yêu cầu phi chức năng để vận
+hành ổn định trên nền tảng nhúng và phù hợp với mô hình IoT.
+
+Thứ nhất, firmware cần nhẹ và ổn định trên ESP32. Các tác vụ đọc cảm biến, xử lý dữ
+liệu, điều khiển thiết bị và truyền thông không được làm treo toàn bộ hệ thống khi một
+cảm biến mất kết nối hoặc phản hồi chậm. Vì vậy, driver cần có timeout, trạng thái lỗi
+rõ ràng và cơ chế bỏ qua mẫu đo không hợp lệ.
+
+Thứ hai, dữ liệu nội bộ cần được biểu diễn nhất quán và tiết kiệm tài nguyên. Trong
+firmware hiện tại, một số đại lượng được xử lý nội bộ dưới dạng fixed-point nhân hệ số
+10 trước khi chuyển về giá trị phù hợp để publish hoặc hiển thị.
+
+Thứ ba, hệ thống cần có khả năng mở rộng. Việc bổ sung cảm biến mới, thiết bị chấp hành
+mới hoặc chỉ số IAQ mới không nên làm thay đổi toàn bộ kiến trúc firmware và backend,
+vì vậy các khối đọc cảm biến, chuẩn hóa mẫu đo, đánh giá IAQ, truyền MQTT và hiển thị
+dashboard cần được tách tương đối độc lập.
+
+Thứ tư, tầng truyền thông IoT cần có định dạng dữ liệu rõ ràng và dễ kiểm thử. MQTT
+được sử dụng cho luồng publish/subscribe giữa ESP32 và backend vì đây là giao thức nhẹ,
+phù hợp với các hệ thống IoT và thiết bị có tài nguyên hạn chế~\cite{oasismqtt}. Payload
+JSON cần có cấu trúc ổn định, có mã thiết bị, thời gian, giá trị cảm biến và trạng thái
+điều khiển để backend có thể kiểm tra trước khi lưu trữ.
+
+Thứ năm, backend và dashboard cần hỗ trợ truy vết dữ liệu theo thời gian. Dữ liệu lịch
+sử cần được lưu kèm timestamp để phục vụ biểu đồ, đối chiếu khi kiểm thử và phân tích
+xu hướng IAQ. Đồng thời, các cấu hình nhạy cảm như địa chỉ broker hoặc thông tin cơ sở
+dữ liệu cần được tách khỏi mã nguồn thông qua biến môi trường hoặc tệp cấu hình cục bộ.
+
+Thứ sáu, dashboard cần thể hiện rõ trạng thái cảm biến, trạng thái dữ liệu, trạng thái
+thiết bị và chế độ điều khiển để người dùng có thể quan sát và thao tác nhất quán.
