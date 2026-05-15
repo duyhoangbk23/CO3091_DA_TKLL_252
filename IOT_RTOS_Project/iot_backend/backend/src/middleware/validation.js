@@ -78,6 +78,10 @@ const schemas = {
         hours: Joi.number().integer().min(1).max(365 * 24).default(24)
     }),
 
+    exportQuery: Joi.object({
+        hours: Joi.number().integer().valid(1, 24, 168).default(24)
+    }),
+
     // Pagination
     pagination: Joi.object({
         limit: Joi.number().integer().min(1).max(1000).default(100),

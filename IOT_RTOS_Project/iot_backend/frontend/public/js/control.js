@@ -3,10 +3,11 @@ const MAX_HISTORY_ITEMS = 20;
 let sensorRefreshInterval = null;
 let historyRefreshInterval = null;
 let pendingCommand = null;
+let commandHistorySeq = 0;
 
 const DEVICES = [
     { key: 'vent', label: 'Ventilation', icon: 'fa-fan', description: 'Exhaust and fresh air fan' },
-    { key: 'hepa', label: 'PM Filter', icon: 'fa-filter', description: 'Fine dust filtration' },
+    { key: 'hepa', label: 'HEPA Filter', icon: 'fa-filter', description: 'Fine dust filtration' },
     { key: 'carbon', label: 'CO2 Filter', icon: 'fa-cloud', description: 'CO2 reduction assist' },
     { key: 'ac', label: 'Air Conditioner', icon: 'fa-snowflake', description: 'Temperature control' },
     { key: 'humid', label: 'Humidifier', icon: 'fa-droplet', description: 'Humidity control' }
@@ -67,9 +68,17 @@ async function handleAutoToggle(e) {
     pendingCommand = { command: 'SET_AUTO', desired, startedAt: Date.now() };
     setAutoUiPending(true);
     const result = await setAutoControl(getDeviceId(), desired);
-    addToHistory(getDeviceId(), 'SET_AUTO', result.success ? 'sent' : 'error', result.message || result.error);
-    displayResponse(result, result.success);
-    if (!result.success) {
+    if (result.success) {
+        const historyId = addToHistory(getDeviceId(), `SET_AUTO ${desired ? 'ON' : 'OFF'}`, 'pending', 'Waiting for ESP32 ACK');
+        pendingCommand = {
+            ...pendingCommand,
+            commandId: result.result?.command_id || '',
+            historyId
+        };
+        displayPendingResponse('Command published. Waiting for ESP32 ACK.');
+    } else {
+        addToHistory(getDeviceId(), `SET_AUTO ${desired ? 'ON' : 'OFF'}`, 'error', result.message || result.error);
+        displayResponse(result, false);
         pendingCommand = null;
         setAutoUiPending(false);
         e.target.checked = autoControlEnabled;
@@ -84,9 +93,18 @@ async function handleDeviceToggle(e) {
     pendingCommand = { command: 'SET_DEVICE', device, desired, startedAt: Date.now() };
     setDevicePending(device, true);
     const result = await setDeviceState(getDeviceId(), device, desired);
-    addToHistory(getDeviceId(), `SET_DEVICE ${device}`, result.success ? 'sent' : 'error', result.message || result.error);
-    displayResponse(result, result.success);
-    if (!result.success) {
+    const commandLabel = `SET_DEVICE ${device.toUpperCase()} ${desired ? 'ON' : 'OFF'}`;
+    if (result.success) {
+        const historyId = addToHistory(getDeviceId(), commandLabel, 'pending', 'Waiting for ESP32 ACK');
+        pendingCommand = {
+            ...pendingCommand,
+            commandId: result.result?.command_id || '',
+            historyId
+        };
+        displayPendingResponse('Command published. Waiting for ESP32 ACK.');
+    } else {
+        addToHistory(getDeviceId(), commandLabel, 'error', result.message || result.error);
+        displayResponse(result, false);
         pendingCommand = null;
         setDevicePending(device, false);
         toggle.checked = Boolean(latestDeviceState[device]);
@@ -101,6 +119,7 @@ async function loadSensorData() {
     document.getElementById('last-update').textContent = formatTimestamp(data.received_at || data.timestamp);
     document.getElementById('device-status').textContent = data.status || 'unknown';
     document.getElementById('device-status').className = data.status === 'online' ? 'badge bg-success' : 'badge bg-danger';
+    setConnectionStatus(data.status === 'online');
 
     autoControlEnabled = data.auto_control_enabled !== false;
     latestDeviceState = data.devices || latestDeviceState;
@@ -115,6 +134,7 @@ function clearExpiredPendingCommand() {
     pendingCommand = null;
     setAutoUiPending(false);
     DEVICES.forEach(device => setDevicePending(device.key, false));
+    updateHistoryItem(expired.historyId, 'error', 'ESP32 ACK timeout. State was not changed on the UI.');
     if (expired.command === 'SET_THRESHOLDS' || expired.command === 'GET_THRESHOLDS') {
         setThresholdStatus('ESP32 ACK timeout. Check MQTT/firmware connection.', false);
     }
@@ -138,11 +158,22 @@ function handleAck(ack) {
         if (ack.thresholds) fillThresholdForm(ack.thresholds);
     }
 
-    if (pendingCommand && ack.command === pendingCommand.command) {
+    if (pendingCommand && ackMatchesPending(ack, pendingCommand)) {
+        updateHistoryItem(
+            pendingCommand.historyId,
+            ok ? 'sent' : 'error',
+            ok ? 'ESP32 ACK received' : (ack.message || 'Firmware rejected command')
+        );
         pendingCommand = null;
         setAutoUiPending(false);
         DEVICES.forEach(device => setDevicePending(device.key, false));
     }
+}
+
+function ackMatchesPending(ack, command) {
+    if (!ack || !command || ack.command !== command.command) return false;
+    if (command.commandId && ack.command_id && command.commandId !== ack.command_id) return false;
+    return true;
 }
 
 function updateDeviceControls() {
@@ -184,6 +215,20 @@ function setDevicePending(device, isPending) {
 }
 
 function updateSensorSection(data) {
+    if (data.status !== 'online') {
+        setCell('sensor-temp', '--');
+        setCell('sensor-humidity', '--');
+        setCell('sensor-pm25', '--');
+        setCell('sensor-co2', '--');
+        setCell('sensor-voc', '--');
+        setStatusCell('sensor-temp-status', 'MISSING');
+        setStatusCell('sensor-humidity-status', 'MISSING');
+        setStatusCell('sensor-pm25-status', 'MISSING');
+        setStatusCell('sensor-co2-status', 'MISSING');
+        setStatusCell('sensor-voc-status', 'MISSING');
+        return;
+    }
+
     const health = data.sensor_health || {};
     setCell('sensor-temp', formatMetric(data.temperature, ' C', 1));
     setCell('sensor-humidity', formatMetric(data.humidity, ' % RH', 1));
@@ -252,8 +297,17 @@ async function requestThresholdsFromFirmware() {
     setThresholdStatus('Requesting firmware thresholds...', null);
     const result = await requestThresholdConfig(getDeviceId());
     setThresholdStatus(result.success ? 'Request sent. Waiting for ESP32 ACK...' : `Error: ${result.error}`, result.success ? null : false);
-    if (!result.success) pendingCommand = null;
-    addToHistory(getDeviceId(), 'GET_THRESHOLDS', result.success ? 'sent' : 'error', result.message || result.error);
+    if (result.success) {
+        const historyId = addToHistory(getDeviceId(), 'GET_THRESHOLDS', 'pending', 'Waiting for ESP32 ACK');
+        pendingCommand = {
+            ...pendingCommand,
+            commandId: result.result?.command_id || '',
+            historyId
+        };
+    } else {
+        addToHistory(getDeviceId(), 'GET_THRESHOLDS', 'error', result.message || result.error);
+        pendingCommand = null;
+    }
 }
 
 async function saveThresholdsToFirmware(e) {
@@ -262,9 +316,19 @@ async function saveThresholdsToFirmware(e) {
     setThresholdStatus('Saving to firmware...', null);
     const result = await updateThresholdConfig(getDeviceId(), readThresholdForm());
     setThresholdStatus(result.success ? 'Config sent. Waiting for ESP32 ACK...' : `Error: ${result.error}`, result.success ? null : false);
-    if (!result.success) pendingCommand = null;
-    addToHistory(getDeviceId(), 'SET_THRESHOLDS', result.success ? 'sent' : 'error', result.message || result.error);
-    displayResponse(result, result.success);
+    if (result.success) {
+        const historyId = addToHistory(getDeviceId(), 'SET_THRESHOLDS', 'pending', 'Waiting for ESP32 ACK');
+        pendingCommand = {
+            ...pendingCommand,
+            commandId: result.result?.command_id || '',
+            historyId
+        };
+        displayPendingResponse('Config published. Waiting for ESP32 ACK.');
+    } else {
+        addToHistory(getDeviceId(), 'SET_THRESHOLDS', 'error', result.message || result.error);
+        pendingCommand = null;
+        displayResponse(result, false);
+    }
 }
 
 function setThresholdStatus(message, ok) {
@@ -279,14 +343,28 @@ function setThresholdStatus(message, ok) {
 }
 
 function addToHistory(deviceId, command, status, message) {
+    const localId = `local-${Date.now()}-${++commandHistorySeq}`;
     commandHistory.unshift({
+        localId,
+        source: 'local',
         timestamp: new Date().toLocaleTimeString(),
+        timestampMs: Date.now(),
         deviceId,
         command,
         status,
         message
     });
     commandHistory = commandHistory.slice(0, MAX_HISTORY_ITEMS);
+    updateHistoryDisplay();
+    return localId;
+}
+
+function updateHistoryItem(localId, status, message) {
+    if (!localId) return;
+    const item = commandHistory.find(entry => entry.localId === localId);
+    if (!item) return;
+    item.status = status;
+    item.message = message;
     updateHistoryDisplay();
 }
 
@@ -298,15 +376,34 @@ function updateHistoryDisplay() {
         return;
     }
     historyContainer.innerHTML = commandHistory.map(item => {
-        const cls = item.status === 'error' ? 'bg-danger' : 'bg-success';
+        const cls = historyStatusClass(item.status);
+        const label = historyStatusLabel(item.status);
         return `
             <div class="border-bottom pb-2 mb-2">
                 <small class="text-muted">${item.timestamp}</small>
-                <p class="mb-1"><strong>${item.deviceId}</strong> -> <code>${item.command}</code> <span class="badge ${cls}">${item.status}</span></p>
+                <p class="mb-1"><strong>${item.deviceId}</strong> -> <code>${item.command}</code> <span class="badge ${cls}">${label}</span></p>
                 <small class="text-muted">${item.message || ''}</small>
             </div>
         `;
     }).join('');
+}
+
+function historyStatusClass(status) {
+    if (status === 'pending') return 'bg-warning text-dark';
+    if (status === 'sent') return 'bg-success';
+    return 'bg-danger';
+}
+
+function historyStatusLabel(status) {
+    if (status === 'pending') return 'pending ack';
+    if (status === 'sent') return 'sent';
+    return 'failed';
+}
+
+function normalizeHistoryStatus(status) {
+    if (status === 'sent') return 'sent';
+    if (status === 'pending') return 'pending';
+    return 'error';
 }
 
 async function loadControlHistory(limit = 20) {
@@ -315,13 +412,20 @@ async function loadControlHistory(limit = 20) {
         updateHistoryDisplay();
         return;
     }
-    commandHistory = history.slice(0, MAX_HISTORY_ITEMS).map(item => ({
-        timestamp: formatTimestamp(item.created_at),
-        deviceId: item.device_id,
-        command: item.command,
-        status: item.status === 'sent' ? 'sent' : 'error',
-        message: item.status === 'sent' ? 'Sent to firmware' : 'Failed'
-    }));
+    const localItems = commandHistory.filter(item => item.source === 'local' && Date.now() - (item.timestampMs || 0) < 60000);
+    const localKeys = new Set(localItems.map(item => `${item.deviceId}|${item.command}`));
+    const dbItems = history
+        .slice(0, MAX_HISTORY_ITEMS)
+        .map(item => ({
+            source: 'db',
+            timestamp: formatTimestamp(item.created_at),
+            deviceId: item.device_id,
+            command: item.command,
+            status: normalizeHistoryStatus(item.status),
+            message: item.status === 'sent' ? 'Published to MQTT' : item.status === 'pending' ? 'Waiting for ESP32 ACK' : 'Failed'
+        }))
+        .filter(item => !localKeys.has(`${item.deviceId}|${item.command}`));
+    commandHistory = [...localItems, ...dbItems].slice(0, MAX_HISTORY_ITEMS);
     updateHistoryDisplay();
 }
 
@@ -334,6 +438,16 @@ function displayResponse(result, isSuccess) {
     text.textContent = isSuccess ? (result.message || 'Command acknowledged') : (result.error || result.message || 'Command failed');
     container.style.display = 'block';
     setTimeout(() => { container.style.display = 'none'; }, 5000);
+}
+
+function displayPendingResponse(message) {
+    const container = document.getElementById('response-container');
+    const alert = document.getElementById('response-alert');
+    const text = document.getElementById('response-text');
+    if (!container || !alert || !text) return;
+    alert.className = 'alert alert-warning';
+    text.textContent = message;
+    container.style.display = 'block';
 }
 
 function getDeviceId() {
@@ -350,4 +464,11 @@ function enableDraggablePanels() {
 
 function updateFooterTime() {
     document.getElementById('footer-time').textContent = new Date().toLocaleString();
+}
+
+function setConnectionStatus(online) {
+    const badge = document.getElementById('connection-status');
+    if (!badge) return;
+    badge.textContent = online ? 'Connected' : 'Disconnected';
+    badge.className = online ? 'badge bg-success' : 'badge bg-danger';
 }

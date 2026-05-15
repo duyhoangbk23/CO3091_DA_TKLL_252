@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function refreshData() {
     const data = await fetchLatestData();
     if (data) {
-        updateConnectionStatus(true);
+        updateConnectionStatus(data.status === 'online');
         updateDashboard(data);
     } else {
         updateConnectionStatus(false);
@@ -32,6 +32,11 @@ async function refreshData() {
 }
 
 function updateDashboard(data) {
+    if (data.status !== 'online') {
+        updateOfflineDashboard(data);
+        return;
+    }
+
     data = filterDashboardNoise(data);
     document.getElementById('device-id').textContent = data.device_id || '-';
     document.getElementById('device-status').textContent = data.status || 'unknown';
@@ -63,6 +68,29 @@ function updateDashboard(data) {
     document.getElementById('device-timestamp').textContent = data.timestamp_ms || '-';
 
     animateSensorUpdate();
+}
+
+function updateOfflineDashboard(data) {
+    previousCleanData = {};
+    document.getElementById('device-id').textContent = data.device_id || '-';
+    document.getElementById('device-status').textContent = 'offline';
+    document.getElementById('device-status').className = 'badge bg-danger';
+
+    document.getElementById('temperature-value').textContent = '--';
+    document.getElementById('humidity-value').textContent = '--';
+    document.getElementById('pm25-value').textContent = '--';
+    document.getElementById('co2-value').textContent = '--';
+    document.getElementById('voc-value').textContent = '--';
+
+    setHealthBadge('temp-status', 'MISSING', 'MISSING');
+    setHealthBadge('humidity-status', 'MISSING', 'MISSING');
+    setHealthBadge('pm25-status', 'MISSING', 'MISSING');
+    setHealthBadge('co2-status', 'MISSING', 'MISSING');
+    setHealthBadge('voc-status', 'MISSING', 'MISSING');
+
+    document.getElementById('last-update').textContent = data.received_at ? formatTimestamp(data.received_at) : '-';
+    document.getElementById('connection-time').textContent = '-';
+    document.getElementById('device-timestamp').textContent = '-';
 }
 
 function filterDashboardNoise(data) {

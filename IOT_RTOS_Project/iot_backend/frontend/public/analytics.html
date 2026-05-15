@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Analytics - Realtime Charts</title>
+    <title>IoT Analytics - Sensor Diagram</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -13,23 +13,36 @@
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
             <span class="navbar-brand mb-0 h1">
-                <i class="fas fa-chart-line"></i> Realtime Charts
+                <i class="fas fa-chart-line"></i> Sensor Diagram
             </span>
             <div class="d-flex gap-2">
                 <a class="btn btn-sm btn-outline-light" href="index.html">Dashboard</a>
-                <a class="btn btn-sm btn-outline-light" href="analytics.html">Charts</a>
-                <a class="btn btn-sm btn-outline-light" href="control.html">Control</a>
+                <a class="btn btn-sm btn-outline-light" href="analytics.html">Sensor Diagram</a>
+                <a class="btn btn-sm btn-outline-light" href="control.html">Device Controller</a>
             </div>
             <span class="badge bg-success" id="connection-status">Connected</span>
         </div>
     </nav>
 
     <div class="container-fluid py-4">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="text-primary">Realtime Charts</h1>
+        <div class="row mb-4 align-items-end g-3">
+            <div class="col-lg-7">
+                <h1 class="text-primary">Sensor Diagram</h1>
                 <p class="text-muted mb-2">Automatically showing the latest 20 consecutive samples from the backend.</p>
                 <div id="noise-alert" class="alert alert-warning py-2" style="display:none;"></div>
+            </div>
+            <div class="col-lg-5">
+                <div class="d-flex flex-wrap justify-content-lg-end gap-2">
+                    <select id="export-range" class="form-select w-auto" aria-label="CSV export time range">
+                        <option value="1">Last 1 hour</option>
+                        <option value="24" selected>Last 1 day</option>
+                        <option value="168">Last 1 week</option>
+                    </select>
+                    <button type="button" class="btn btn-success" id="export-csv-btn">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </button>
+                </div>
+                <div class="small text-muted text-lg-end mt-1" id="export-status"></div>
             </div>
         </div>
 
@@ -87,7 +100,10 @@
                     <div class="card-header bg-danger text-white">
                         <i class="fas fa-thermometer-half"></i> Temperature
                     </div>
-                    <div class="card-body"><canvas id="temperature-chart"></canvas></div>
+                    <div class="card-body">
+                        <canvas id="temperature-chart"></canvas>
+                        <div class="chart-missing-alert" id="temperature-missing-alert">Missing</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-6">
@@ -95,7 +111,10 @@
                     <div class="card-header bg-info text-white">
                         <i class="fas fa-droplet"></i> Humidity
                     </div>
-                    <div class="card-body"><canvas id="humidity-chart"></canvas></div>
+                    <div class="card-body">
+                        <canvas id="humidity-chart"></canvas>
+                        <div class="chart-missing-alert" id="humidity-missing-alert">Missing</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4">
@@ -103,7 +122,10 @@
                     <div class="card-header bg-warning text-white">
                         <i class="fas fa-smog"></i> PM2.5
                     </div>
-                    <div class="card-body"><canvas id="pm25-chart"></canvas></div>
+                    <div class="card-body">
+                        <canvas id="pm25-chart"></canvas>
+                        <div class="chart-missing-alert" id="pm25-missing-alert">Missing</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4">
@@ -111,7 +133,10 @@
                     <div class="card-header bg-secondary text-white">
                         <i class="fas fa-cloud"></i> CO2
                     </div>
-                    <div class="card-body"><canvas id="co2-chart"></canvas></div>
+                    <div class="card-body">
+                        <canvas id="co2-chart"></canvas>
+                        <div class="chart-missing-alert" id="co2-missing-alert">Missing</div>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4">
@@ -119,7 +144,10 @@
                     <div class="card-header bg-primary text-white">
                         <i class="fas fa-flask"></i> VOC
                     </div>
-                    <div class="card-body"><canvas id="voc-chart"></canvas></div>
+                    <div class="card-body">
+                        <canvas id="voc-chart"></canvas>
+                        <div class="chart-missing-alert" id="voc-missing-alert">Missing</div>
+                    </div>
                 </div>
             </div>
         </div>

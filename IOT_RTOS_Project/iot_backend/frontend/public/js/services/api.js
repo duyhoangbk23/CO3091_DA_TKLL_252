@@ -53,6 +53,19 @@ async function fetchHistoricalData(limit = 100, hours = 24) {
     }
 }
 
+async function exportSensorCsv(hours = 24) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/export.csv?hours=${encodeURIComponent(hours)}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.blob();
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        throw error;
+    }
+}
+
 /**
  * Send control command to device
  * @param {string} deviceId - Device ID
