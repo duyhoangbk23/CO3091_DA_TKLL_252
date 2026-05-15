@@ -1,0 +1,82 @@
+/**
+ * Hợp đồng MQTT / payload — đọc từ IOT_RTOS_Project/common/data_format.json
+ * (cùng nguồn với rtos: mqtt_topics.h + SensorData_t trong global.h)
+ */
+const fs = require('fs');
+const path = require('path');
+const { DEFAULT_DEVICE_ID } = require('./device');
+
+// backend/src/config → lên 4 cấp tới IOT_RTOS_Project/common
+const CONTRACT_PATH = path.join(__dirname, '../../../../common/data_format.json');
+const contract = JSON.parse(fs.readFileSync(CONTRACT_PATH, 'utf8'));
+
+const mqttTopics = contract.mqtt_topics;
+
+/**
+ * Chuẩn hóa payload sensor từ broker → nội bộ backend.
+ * RTOS gửi: pm25, co2, voc, timestamp (µs).
+ */
+function mapSensorPayload(raw) {
+    const parsedTimestamp = parseInt(raw.timestamp_ms ?? raw.timestamp, 10);
+    const pm25 = raw.pm25 !== undefined && raw.pm25 !== null ? Number(raw.pm25) : NaN;
+    const co2 = raw.co2 !== undefined && raw.co2 !== null ? Number(raw.co2) : NaN;
+    const voc = raw.voc !== undefined && raw.voc !== null ? Number(raw.voc) : NaN;
+
+    const pm25I = Number.isFinite(pm25) ? Math.trunc(pm25) : 0;
+    const co2I = Number.isFinite(co2) ? Math.trunc(co2) : 0;
+    const vocI = Number.isFinite(voc) ? Math.trunc(voc) : 0;
+
+    const t = raw.temperature === null ? NaN : parseFloat(raw.temperature);
+    const h = raw.humidity === null ? NaN : parseFloat(raw.humidity);
+    const sensorHealth = raw.sensor_health || {};
+    const alerts = raw.alerts || {};
+    const devices = raw.devices || {};
+    return {
+        device_id: raw.device_id || DEFAULT_DEVICE_ID,
+        temperature: Number.isFinite(t) ? t : null,
+        humidity: Number.isFinite(h) ? h : null,
+        pm25: pm25I,
+        co2: co2I,
+        voc: vocI,
+        alert_level: parseInt(raw.alert_level, 10) || 0,
+        timestamp_ms: Number.isNaN(parsedTimestamp) ? Date.now() : parsedTimestamp,
+        uptime_ms: raw.uptime_ms ?? null,
+        sensor_health: {
+            co2: sensorHealth.co2 || (co2I === 65535 ? 'MISSING' : 'OK'),
+            pm: sensorHealth.pm || (pm25I < 0 ? 'MISSING' : 'OK'),
+            voc: sensorHealth.voc || 'OK',
+            temp: sensorHealth.temp || (Number.isFinite(t) ? 'OK' : 'NAN'),
+            rh: sensorHealth.rh || (Number.isFinite(h) ? 'OK' : 'NAN')
+        },
+        alerts: {
+            co2: Boolean(alerts.co2),
+            pm: Boolean(alerts.pm),
+            voc: Boolean(alerts.voc),
+            temp: Boolean(alerts.temp),
+            rh: Boolean(alerts.rh)
+        },
+        devices: {
+            hepa: Boolean(devices.hepa),
+            vent: Boolean(devices.vent),
+            carbon: Boolean(devices.carbon),
+            ac: Boolean(devices.ac),
+            humid: Boolean(devices.humid)
+        },
+        auto_control_enabled: raw.auto_control_enabled !== undefined ? Boolean(raw.auto_control_enabled) : true,
+        config_version: raw.config_version ?? null,
+        ack: raw.status && raw.command ? {
+            command: raw.command,
+            command_id: raw.command_id || '',
+            status: raw.status,
+            message: raw.message || '',
+            thresholds: raw.thresholds || null
+        } : null,
+        thresholds: raw.thresholds || null
+    };
+}
+
+module.exports = {
+    CONTRACT_PATH,
+    mqttTopics,
+    mapSensorPayload
+};

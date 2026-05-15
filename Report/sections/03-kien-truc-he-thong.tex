@@ -1,0 +1,57 @@
+Kiến trúc tổng thể được chia thành các tầng: cảm biến, thiết bị nhúng ESP32, truyền thông MQTT, backend/API, cơ sở dữ liệu và dashboard web. Thiết bị nhúng chịu trách nhiệm đo và phản ứng cục bộ. Backend chịu trách nhiệm nhận dữ liệu từ MQTT, chuẩn hóa payload, lưu lịch sử và cung cấp API. Dashboard web là giao diện quan sát, phân tích lịch sử và gửi lệnh điều khiển.
+
+\section{Luồng dữ liệu}
+
+\begin{center}
+\texttt{Sensor -> ESP32/Firmware -> MQTT -> Backend -> Database -> API -> Web Dashboard}
+\end{center}
+
+Luồng điều khiển đi ngược lại:
+
+\begin{center}
+\texttt{Web Dashboard -> API -> Backend -> MQTT -> ESP32 -> Device/LED}
+\end{center}
+
+Trong source hiện tại, đoạn \texttt{Sensor -> ESP32/Firmware -> log/LED} đã được hiện thực ở nhánh firmware tuần tự. Phiên bản RTOS mở rộng luồng này bằng MQTT để kết nối với backend, database và dashboard.
+
+Với phiên bản RTOS hiện tại, luồng dữ liệu đã được hiện thực ở mức prototype qua MQTT:
+
+\begin{center}
+\texttt{SensorHub -> RTOS tasks -> MQTT -> Backend -> MySQL/API -> Dashboard}
+\end{center}
+
+Luồng điều khiển từ xa được thiết kế theo hướng:
+
+\begin{center}
+\texttt{Dashboard -> API -> MQTT control topic -> RTOS control task -> IaqController}
+\end{center}
+
+\section{Luận điểm thiết kế hệ thống}
+
+Nguyên tắc thiết kế xuyên suốt là xử lý cục bộ trước, giám sát từ xa sau. ESP32 vẫn phải đọc cảm biến, đánh giá IAQ và điều khiển cảnh báo ngay cả khi Wi-Fi, MQTT hoặc server không khả dụng. Tầng IoT/backend/dashboard mở rộng khả năng quan sát, lưu lịch sử và điều khiển từ xa, nhưng không thay thế cơ chế an toàn tại thiết bị.
+
+Với luận điểm này, các quyết định thiết kế được sắp xếp theo thứ tự ưu tiên: dữ liệu cảm biến phải được kiểm tra trước khi dùng; cảnh báo cục bộ phải hoạt động độc lập với server; lệnh từ dashboard phải đi qua chính sách an toàn; và database phục vụ phân tích lịch sử thay vì là điều kiện bắt buộc để thiết bị phản ứng.
+
+\section{Phân rã module}
+
+\begin{table}[H]
+    \centering
+    \caption{Các module chính của dự án}
+    \begin{tabularx}{\textwidth}{>{\bfseries}l X X}
+        \toprule
+        Module & Trách nhiệm & Hiện trạng trong repo \\
+        \midrule
+        \texttt{hardware/main} & Driver cảm biến, đánh giá IAQ, điều khiển output, ghi log SPIFFS & Prototype tuần tự \\
+        \texttt{rtos} & Task RTOS, queue/mutex/semaphore, MQTT client, control command & Firmware RTOS đã có source \\
+        \texttt{common} & MQTT topic, payload JSON, hợp đồng dữ liệu chung & Đã có contract \\
+        \texttt{iot\_backend/backend} & Nhận MQTT, lưu MySQL, cung cấp REST API, publish control & Đã có source Express \\
+        \texttt{iot\_backend/database} & Lưu telemetry và control log & Đã có schema MySQL \\
+        \texttt{iot\_backend/frontend} & Dashboard realtime, analytics, control panel & Đã có static UI \\
+        \texttt{integration\_test} & Kiểm thử pipeline dữ liệu và điều khiển & Có test backend mô phỏng MQTT, cần E2E thật \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Nguyên tắc thiết kế}
+
+Các tầng được tách theo trách nhiệm. Driver chỉ đọc cảm biến và kiểm tra giao thức. \texttt{SensorHub} gom dữ liệu thành \texttt{SensorSample}. \texttt{IaqEvaluator} chỉ xử lý trạng thái IAQ, không phụ thuộc chân GPIO. \texttt{IaqController} chỉ áp dụng output. Trong phiên bản RTOS, dữ liệu được truyền giữa task qua queue, mutex và semaphore. Backend và dashboard không đọc trực tiếp phần cứng, mà làm việc qua MQTT/API theo contract chung.

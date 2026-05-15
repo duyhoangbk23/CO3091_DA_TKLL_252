@@ -1,0 +1,63 @@
+{
+  "_comments": [
+    "CONTRACT CHUNG - MQTT/JSON cho RTOS firmware, backend va dashboard.",
+    "Telemetry giu cac field legacy temperature/humidity/pm25/co2/voc/alert_level de backward compatibility."
+  ],
+  "mqtt_topics": {
+    "sensor_data": "iot/sensor/data",
+    "device_status": "iot/device/status",
+    "device_control": "iot/device/control"
+  },
+  "sensor_data_payload": {
+    "_description": "ESP32 publish len iot/sensor/data moi 2 giay",
+    "device_id": { "type": "string", "example": "esp32_device" },
+    "temperature": { "type": "float|null", "unit": "C", "example": 32.5 },
+    "humidity": { "type": "float|null", "unit": "%RH", "example": 65 },
+    "pm25": { "type": "int16", "unit": "ug/m3", "invalid": -1, "example": 15 },
+    "co2": { "type": "uint16", "unit": "ppm", "invalid": 65535, "example": 450 },
+    "voc": { "type": "uint16", "unit": "raw/index", "example": 350 },
+    "alert_level": { "type": "uint8", "values": "0=OK, 1=WARN, 2=CRITICAL", "example": 0 },
+    "sensor_health": {
+      "co2": "OK|ERROR|TIMEOUT|NAN|MISSING|OUT_OF_RANGE",
+      "pm": "OK|ERROR|TIMEOUT|NAN|MISSING|OUT_OF_RANGE",
+      "voc": "OK|ERROR|TIMEOUT|NAN|MISSING|OUT_OF_RANGE",
+      "temp": "OK|ERROR|TIMEOUT|NAN|MISSING|OUT_OF_RANGE",
+      "rh": "OK|ERROR|TIMEOUT|NAN|MISSING|OUT_OF_RANGE"
+    },
+    "alerts": { "co2": "boolean", "pm": "boolean", "voc": "boolean", "temp": "boolean", "rh": "boolean" },
+    "devices": { "hepa": "boolean", "vent": "boolean", "carbon": "boolean", "ac": "boolean", "humid": "boolean" },
+    "auto_control_enabled": { "type": "boolean", "default": true },
+    "config_version": { "type": "uint32" },
+    "timestamp": { "type": "int64", "unit": "microseconds (esp_timer_get_time)" },
+    "uptime_ms": { "type": "uint32", "unit": "milliseconds" }
+  },
+  "control_command_payload": {
+    "_description": "Backend publish len iot/device/control",
+    "legacy_command": "LED_ON|LED_OFF|HEPA_ON|HEPA_OFF|VENT_ON|VENT_OFF|CARBON_ON|CARBON_OFF|AC_ON|AC_OFF|HUMID_ON|HUMID_OFF|GET_STATUS|REBOOT|TEST_LED|MUTE_ALARM",
+    "set_auto": { "device_id": "esp32_device", "command": "SET_AUTO", "enabled": true, "command_id": "optional" },
+    "manual_device": { "device_id": "esp32_device", "command": "SET_DEVICE", "device": "hepa|vent|carbon|ac|humid", "state": true, "command_id": "optional" },
+    "get_thresholds": { "device_id": "esp32_device", "command": "GET_THRESHOLDS", "command_id": "optional" },
+    "set_thresholds": {
+      "device_id": "esp32_device",
+      "command": "SET_THRESHOLDS",
+      "thresholds": {
+        "co2_on": 1000, "co2_off": 950,
+        "pm_on": 35, "pm_off": 30,
+        "voc_on": 500, "voc_off": 450,
+        "temp_on": 32, "temp_off": 31,
+        "rh_low_on": 30, "rh_low_off": 35,
+        "rh_high_on": 65, "rh_high_off": 60
+      }
+    }
+  },
+  "device_status_payload": {
+    "_description": "ESP32 publish ACK/status len iot/device/status",
+    "command_id": { "type": "string", "required": false },
+    "command": { "type": "string" },
+    "status": { "type": "string", "values": "success|error" },
+    "message": { "type": "string" },
+    "devices": { "hepa": "boolean", "vent": "boolean", "carbon": "boolean", "ac": "boolean", "humid": "boolean" },
+    "auto_control_enabled": { "type": "boolean" },
+    "thresholds": { "type": "object", "required": false }
+  }
+}

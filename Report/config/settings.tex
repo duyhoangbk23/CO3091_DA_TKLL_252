@@ -1,0 +1,80 @@
+\onehalfspacing
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+
+\definecolor{accent}{HTML}{0F4C81}
+\definecolor{softgray}{HTML}{666666}
+\definecolor{codebg}{HTML}{F5F7FA}
+
+\titleformat{\chapter}
+    {\normalfont\huge\bfseries\color{accent}}
+    {\thechapter.}
+    {0.75em}
+    {}
+
+\titleformat{\section}
+    {\normalfont\Large\bfseries}
+    {\thesection}
+    {0.75em}
+    {}
+
+\captionsetup{
+    font=small,
+    labelfont=bf
+}
+
+\hypersetup{
+    unicode=true,
+    hidelinks,
+    pdfauthor={2310410 Ho Cong Danh; 2310458 Hoang Anh Duy; 2310752 Cao Quang Don},
+    pdftitle={\reporttitle}
+}
+
+\lstdefinestyle{engineering}{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{black!15},
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false
+}
+
+\newcommand{\code}[1]{%
+    \begingroup
+    \ttfamily
+    \edef\codetext{\detokenize{#1}}%
+    \expandafter\seqsplit\expandafter{\codetext}%
+    \endgroup
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textsf{\coursename}}
+\fancyhead[R]{%
+    \IfFileExists{\headernamelogo}{\raisebox{-0.35\height}{\includegraphics[height=0.55cm]{\headernamelogo}}}{\small\textsf{\labtitle}}%
+}
+\fancyfoot[L]{\small\textsf{Hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí (IAQ)}}
+\fancyfoot[R]{\small\thepage/\pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\setlength{\headheight}{24pt}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[L]{\small\textsf{\coursename}}
+    \fancyhead[R]{%
+        \IfFileExists{\headernamelogo}{\raisebox{-0.35\height}{\includegraphics[height=0.55cm]{\headernamelogo}}}{\small\textsf{\labtitle}}%
+    }
+    \fancyfoot[L]{\small\textsf{Hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí (IAQ)}}
+    \fancyfoot[R]{\small\thepage/\pageref{LastPage}}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+}
+
+\newcommand{\signatureline}[1]{%
+    \par\vspace{1.5cm}
+    \noindent\makebox[7cm]{\hrulefill}\par
+    \noindent\textit{#1}
+}

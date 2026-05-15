@@ -1,0 +1,51 @@
+\documentclass[a4paper,12pt]{report}
+
+\input{config/metadata}
+\input{config/packages}
+\input{config/settings}
+
+\begin{document}
+
+\pagenumbering{gobble}
+\input{frontmatter/cover}
+
+\clearpage
+\pagenumbering{roman}
+\chapter*{Tóm tắt}
+\addcontentsline{toc}{chapter}{Tóm tắt}
+\input{frontmatter/abstract}
+
+\clearpage
+\tableofcontents
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\chapter{Giới thiệu đề tài}
+\input{sections/01-gioi-thieu-de-tai}
+
+\chapter{Yêu cầu và cơ sở lý thuyết}
+\input{sections/02-yeu-cau-va-co-so-ly-thuyet}
+
+\chapter{Kiến trúc hệ thống}
+\input{sections/03-kien-truc-he-thong}
+
+\chapter{Thiết kế phần cứng}
+\input{sections/04-thiet-ke-phan-cung}
+
+\chapter{Firmware đọc dữ liệu và điều khiển cục bộ}
+\input{sections/05-firmware-doc-du-lieu}
+
+\chapter{Thiết kế RTOS và IoT truyền dữ liệu}
+\input{sections/06-thiet-ke-rtos-va-iot}
+
+\chapter{Server, cơ sở dữ liệu và dashboard web}
+\input{sections/07-server-dashboard-web}
+
+\chapter{Kết luận và hướng phát triển}
+\input{sections/09-ket-luan-va-huong-phat-trien}
+
+\input{sections/10-tai-lieu-tham-khao}
+
+\end{document}

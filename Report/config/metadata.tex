@@ -1,0 +1,55 @@
+\newif\ifenglish
+\englishfalse
+% \englishtrue
+% Change to \englishtrue for English UI.
+
+\ifenglish
+    \newcommand{\universityname}{VIETNAM NATIONAL UNIVERSITY HO CHI MINH CITY}
+    \newcommand{\schoolname}{HO CHI MINH CITY UNIVERSITY OF TECHNOLOGY}
+    \newcommand{\facultyname}{FACULTY OF COMPUTER SCIENCE AND ENGINEERING}
+    \newcommand{\coursename}{LOGIC DESIGN PROJECT}
+    \newcommand{\reporttitle}{PROJECT REPORT}
+    \newcommand{\chapteroverviewtitle}{IoT RTOS System for Indoor Air Quality (IAQ) Monitoring and Control}
+    \newcommand{\instructorlabel}{Instructor}
+    \newcommand{\studentlabel}{Student}
+    \newcommand{\studentidlabel}{Student ID}
+    \newcommand{\classlabel}{Class}
+    \newcommand{\semester}{Semester 2, Academic Year 2025--2026}
+    \newcommand{\locationanddate}{Ho Chi Minh City, May 2026}
+\else
+    \newcommand{\universityname}{ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}
+    \newcommand{\schoolname}{TRƯỜNG ĐẠI HỌC BÁCH KHOA}
+    \newcommand{\facultyname}{KHOA KHOA HỌC VÀ KỸ THUẬT MÁY TÍNH}
+    \newcommand{\coursename}{ĐỒ ÁN THIẾT KẾ LUẬN LÝ}
+    \newcommand{\reporttitle}{BÁO CÁO ĐỒ ÁN}
+    \newcommand{\chapteroverviewtitle}{Hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí (IAQ)}
+    \newcommand{\instructorlabel}{Giảng viên hướng dẫn}
+    \newcommand{\studentlabel}{Sinh viên}
+    \newcommand{\studentidlabel}{MSSV}
+    \newcommand{\classlabel}{Lớp}
+    \newcommand{\semester}{Học kỳ 2, năm học 2025--2026}
+    \newcommand{\locationanddate}{TP. Hồ Chí Minh, tháng 05 năm 2026}
+\fi
+
+\newcommand{\labtitle}{Hệ thống IoT RTOS giám sát chất lượng không khí (IAQ)}
+\newcommand{\instructor}{Phan Văn Sỹ}
+\newcommand{\studentname}{Nhóm sinh viên}
+\newcommand{\studentid}{}
+\newcommand{\classname}{L02}
+\newcommand{\studenttable}{%
+Hồ Công Danh & 2310410\\ \hline
+Hoàng Anh Duy & 2310458\\ \hline
+Cao Quang Đôn & 2310752\\ \hline
+}
+
+\newcommand{\schoollogolight}{assets/images/01_logobachkhoasang.png}
+\newcommand{\schoollogodark}{assets/images/01_logobachkhoatoi.png}
+\newcommand{\schoolnamevi}{assets/images/bk_name_vi.png}
+\newcommand{\schoolnameen}{assets/images/bk_name_en.png}
+
+\newcommand{\covericonlogo}{\schoollogolight}
+\ifenglish
+    \newcommand{\headernamelogo}{\schoolnameen}
+\else
+    \newcommand{\headernamelogo}{\schoolnamevi}
+\fi

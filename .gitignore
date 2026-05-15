@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.*.local
+**/local_config.h
+
+# LaTeX / report build outputs
+Report/*.aux
+Report/*.out
+Report/*.toc
+Report/*.log
+Report/*.synctex.gz
+
+# Logs
+logs/
+*.log
+**/logs/
+**/*.log
+
+# OS generated files
+.DS_Store
+Thumb.db
+**/.DS_Store
+**/Thumb.db
+
+# IDE files
+.vscode/
+.idea/
+**/.vscode/
+**/.idea/
+
+# Docker volumes (local development)
+mysql_data/
+mosquitto_data/
+mosquitto_logs/
+**/mysql_data/
+**/mosquitto_data/
+**/mosquitto_logs/
+
+# Build outputs
+dist/
+build/
+*.o
+*.a
+coverage/
+.nyc_output/
+
+# Test
+.mocha_timeout
+test-results/
+playwright-report/
+

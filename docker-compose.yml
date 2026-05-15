@@ -1,0 +1,104 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: iot-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-iot_db}
+      MYSQL_USER: ${DB_USER:-iot_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-iot_password}
+      TZ: 'Asia/Ho_Chi_Minh'
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - ./IOT_RTOS_Project/iot_backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - mysql_data:/var/lib/mysql
+    networks:
+      - iot-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER:-iot_user}", "-p${DB_PASSWORD:-iot_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MQTT Broker (Mosquitto)
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: iot-mqtt
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+      - "9001:9001"  # WebSocket port
+    volumes:
+      - ./docker/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - iot-network
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "healthcheck", "-m", "ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Node.js Backend
+  backend:
+    build:
+      context: ./IOT_RTOS_Project/iot_backend/backend
+      dockerfile: Dockerfile
+    container_name: iot-backend
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-iot_user}
+      DB_PASSWORD: ${DB_PASSWORD:-iot_password}
+      DB_NAME: ${DB_NAME:-iot_db}
+      MQTT_BROKER: mqtt://mqtt:1883
+      MQTT_TOPIC_PUBLISH: ${MQTT_TOPIC_PUBLISH:-iot/sensor/data}
+      MQTT_TOPIC_COMMAND: ${MQTT_TOPIC_COMMAND:-iot/device/control}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mqtt:
+        condition: service_healthy
+    networks:
+      - iot-network
+    volumes:
+      - ./IOT_RTOS_Project/iot_backend/backend/src:/app/src
+      - ./IOT_RTOS_Project/iot_backend/backend/logs:/app/logs
+      - ./IOT_RTOS_Project/common:/common:ro
+    restart: unless-stopped
+    command: npm start
+
+  # Frontend (Optional - if you want to serve it from Docker)
+  frontend:
+    image: nginx:alpine
+    container_name: iot-frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    volumes:
+      - ./IOT_RTOS_Project/iot_backend/frontend/public:/usr/share/nginx/html:ro
+      - ./docker/config/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - iot-network
+    restart: unless-stopped
+
+networks:
+  iot-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
+    driver: local

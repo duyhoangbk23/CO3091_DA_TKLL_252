@@ -4,7 +4,7 @@
 // Bạn tự chọn GPIO cho 10 LED.
 // [Chưa xác minh] Mình không thể chọn pin thay bạn vì còn phụ thuộc wiring và các pin đang dùng UART/ADC.
 // Set các macro dưới đây theo phần cứng của bạn.
-
+#define DEVICE_ID "esp32_device"
 // LED xanh (thiết bị)
 #ifndef LED_HEPA_G
 #define LED_HEPA_G   15

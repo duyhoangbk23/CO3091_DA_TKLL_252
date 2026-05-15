@@ -1,68 +1,99 @@
 # Backend Module
 
-## 🎯 Mục tiêu
+Backend Node.js/Express nhan telemetry tu MQTT, luu MySQL, giu latest state trong RAM va cung cap API cho dashboard.
 
-* Nhận dữ liệu từ MQTT
-* Lưu vào database
-* Cung cấp API cho frontend
+## Thanh phan
 
----
+```text
+src/
+|-- app.js                  # Express app factory, routes core
+|-- server.js               # Startup, DB/MQTT init
+|-- config/
+|   |-- database.js
+|   |-- device.js
+|   `-- mqttContract.js     # Doc common/data_format.json
+|-- controllers/
+|-- models/
+|-- routes/
+|-- services/mqtt.js
+|-- middleware/
+`-- logger/
+```
 
-## 📦 Thành phần
+## Data flow
 
-* `routes/`: API endpoint
-* `controllers/`: xử lý logic
-* `services/`: DB + MQTT
-* `models/`: schema dữ liệu
+```text
+ESP32 RTOS -> MQTT iot/sensor/data -> mqtt service -> sensor controller
+    -> latestData cache
+    -> MySQL sensor_data
+    -> GET /api/data, /api/history, /api/stats
 
----
+Dashboard -> POST /api/control* -> control controller
+    -> MQTT iot/device/control
+    -> MySQL control_log
+```
 
-## 🔧 Công việc cần làm
+## API
 
-* Kết nối MQTT broker
-* Parse dữ liệu từ ESP32
-* Lưu vào DB (InfluxDB)
-* Tạo API:
+| API | Vai tro |
+| --- | --- |
+| `GET /api/data` | Lay latest telemetry/state |
+| `GET /api/history?limit=&hours=` | Lay lich su tu MySQL |
+| `GET /api/stats` | Thong ke trong khoang thoi gian |
+| `POST /api/control` | Gui command legacy/control |
+| `POST /api/control/auto` | Bat/tat auto-control |
+| `POST /api/control/device` | Dieu khien tung device khi manual mode |
+| `GET /api/control/thresholds` | Yeu cau device publish thresholds |
+| `POST /api/control/thresholds` | Gui thresholds moi xuong device |
+| `GET /api/control/history` | Lich su lenh trong `control_log` |
+| `GET /health` | Health check backend/database |
 
-  * GET /api/data
-  * GET /api/history
-  * POST /api/control
+## Cong nghe
 
----
+- Node.js + Express
+- MQTT.js / Mosquitto
+- MySQL (`mysql2`)
+- Joi validation
+- Winston logging
+- Jest + Supertest
 
-## 🛠 Công nghệ sử dụng
+## Build & run local
 
-* Node.js + Express
-* MQTT (mosquitto)
-* InfluxDB
-
----
-
-## ⚙️ Build & Run
-
-```bash
+```powershell
 npm install
-node src/server.js
+npm start
 ```
 
----
+Bien moi truong quan trong:
 
-## 🧪 Test
-
-### Test API:
-
-```bash
-curl http://localhost:3000/api/data
+```text
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=iot_user
+DB_PASSWORD=iot_password
+DB_NAME=iot_db
+MQTT_BROKER=mqtt://localhost:1883
 ```
 
-### Test MQTT:
+Stack khuyen dung tu root repo:
 
-* Publish thử message
-* Check backend nhận được
+```powershell
+docker compose up -d --build
+```
 
----
+## Test
 
-## ⚠️ Lưu ý
+```powershell
+npm test -- --runInBand
+npm run test:unit
+npm run test:integration
+```
 
-* Không hardcode config → dùng `.env`
-* Validate JSON input
+Integration test hien tai mock MQTT broker de kiem tra luong RTOS -> MQTT -> backend -> API va control API -> MQTT. Test nay khong thay the test end-to-end voi ESP32 that.
+
+## Luu y
+
+- MQTT topic/payload lay tu `../../common/data_format.json` qua `src/config/mqttContract.js`.
+- Backend luu `timestamp` tu ESP32 vao DB va tra history voi alias `timestamp_ms`.
+- Khong hardcode credential; dung `.env` hoac bien moi truong Docker.
