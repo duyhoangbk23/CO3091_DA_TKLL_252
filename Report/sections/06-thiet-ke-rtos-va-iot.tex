@@ -8,7 +8,7 @@ gồm đọc cảm biến định kỳ, xử lý IAQ khi có mẫu mới, cập 
 và xử lý lệnh điều khiển từ dashboard. Nhờ vậy, thao tác mạng hoặc việc broker mất kết
 nối không làm dừng phần đọc cảm biến và phản ứng cục bộ.
 
-Firmware RTOS được build bằng PlatformIO với board \texttt{nodemcu-32s}, Arduino
+Firmware RTOS được biên dịch bằng PlatformIO với board \texttt{nodemcu-32s}, Arduino
 framework, \texttt{PubSubClient} cho MQTT và \texttt{ArduinoJson} cho payload. Các cấu
 hình nhạy cảm như Wi-Fi, MQTT broker và \texttt{DEVICE\_ID} được tách trong
 \texttt{include/local\_config.h}, giúp thuận lợi cho triển khai mà không làm thay đổi mã
@@ -18,7 +18,7 @@ nguồn lõi.
 
 Trong \texttt{rtos/src/main.cpp}, quá trình khởi tạo gồm bốn bước chính. Trước hết,
 firmware khởi tạo \texttt{SensorHub} với các giao tiếp phần cứng cần thiết. Tiếp theo,
-hệ thống nạp cấu hình bền vững từ NVS, bao gồm trạng thái auto-control và
+hệ thống nạp cấu hình lưu trong NVS, bao gồm trạng thái điều khiển tự động và
 \texttt{ThresholdConfig}. Sau đó, \texttt{IaqEvaluator} và \texttt{IaqController} được
 khởi tạo theo cấu hình hiện hành. Cuối cùng, các tài nguyên FreeRTOS như queue, mutex và
 semaphore được tạo, rồi các task chính được đưa vào vận hành.
@@ -33,8 +33,8 @@ xTaskCreatePinnedToCore(vTaskMQTT,        "Task MQTT",     8192, NULL, 1, NULL, 
 
 Trong cấu hình hiện tại, các tác vụ đọc cảm biến, xử lý và điều khiển được đặt trên
 core 1, còn task MQTT được đặt trên core 0 với mức ưu tiên thấp hơn. Cách phân bố này
-phù hợp với nguyên tắc ưu tiên phản ứng cục bộ: các thao tác mạng có thể retry kết nối
-mà không cạnh tranh trực tiếp với đường xử lý IAQ.
+phù hợp với nguyên tắc ưu tiên phản ứng cục bộ: các thao tác mạng có thể thử kết nối lại
+mà không cạnh tranh trực tiếp với luồng xử lý IAQ.
 
 \subsection{Tài nguyên đồng bộ}
 
@@ -52,8 +52,8 @@ cảnh báo có thể đánh thức task xử lý đầu ra thông qua semaphore
         Tài nguyên & Cơ chế & Vai trò \\
         \midrule
         \texttt{xSensorQueue} & Queue & Truyền dữ liệu đã chuẩn hóa từ task đọc cảm biến sang task xử lý \\
-        \texttt{xControlQueue} & Queue & Truyền payload điều khiển MQTT từ callback mạng sang task điều khiển \\
-        \texttt{xDataMutex} & Mutex & Bảo vệ \texttt{g\_LatestData}, \texttt{g\_iaq} và trạng thái runtime khi nhiều task cùng truy cập \\
+        \texttt{xControlQueue} & Queue & Truyền payload điều khiển MQTT từ callback MQTT sang task điều khiển \\
+        \texttt{xDataMutex} & Mutex & Bảo vệ \texttt{g\_LatestData}, \texttt{g\_iaq} và trạng thái vận hành khi nhiều task cùng truy cập \\
         \texttt{xAlertSem} & Counting semaphore & Báo cho task cảnh báo cập nhật đầu ra khi trạng thái IAQ thay đổi \\
         \texttt{SnapshotStore} & Critical section & Lưu mẫu \texttt{SensorSample} mới nhất ở tầng firmware \\
         \bottomrule
@@ -62,7 +62,7 @@ cảnh báo có thể đánh thức task xử lý đầu ra thông qua semaphore
 
 Việc sử dụng queue và mutex giúp các khối chức năng trao đổi dữ liệu theo cách tường
 minh, giảm phụ thuộc trực tiếp giữa các task. Đồng thời, callback MQTT được giữ ngắn gọn
-bằng cách chỉ đưa payload vào queue thay vì xử lý JSON trực tiếp trong ngữ cảnh mạng.
+bằng cách chỉ đưa payload vào queue thay vì xử lý JSON trực tiếp trong callback MQTT.
 
 \subsection{Phân rã task trong firmware}
 
@@ -76,23 +76,23 @@ bằng cách chỉ đưa payload vào queue thay vì xử lý JSON trực tiếp
         \texttt{vTaskAlert} & Semaphore hoặc 500 ms & 5 & Đọc \texttt{g\_iaq} và áp dụng trạng thái ra LED/thiết bị mô phỏng \\
         \texttt{vTaskSensorRead} & 2000 ms & 4 & Đọc \texttt{SensorHub}, cập nhật \texttt{SnapshotStore}, ánh xạ sang \texttt{SensorData\_t} và gửi vào queue \\
         \texttt{vTaskDataProcess} & Khi queue có dữ liệu & 3 & Gọi \texttt{IaqEvaluator}, tính \texttt{alert\_level}, cập nhật trạng thái dùng chung \\
-        \texttt{vTaskControl} & Khi có command & 3 & Xử lý auto/manual mode, command thiết bị, threshold và lưu NVS \\
-        \texttt{vTaskMQTT} & Định kỳ và callback MQTT & 1 & Duy trì Wi-Fi/MQTT, publish telemetry và subscribe control topic \\
+        \texttt{vTaskControl} & Khi có lệnh & 3 & Xử lý chế độ tự động/thủ công, lệnh thiết bị, cấu hình ngưỡng và lưu NVS \\
+        \texttt{vTaskMQTT} & Định kỳ và callback MQTT & 1 & Duy trì Wi-Fi/MQTT, gửi telemetry và subscribe control topic \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
 Trong các task này, \texttt{vTaskDataProcess} là điểm nối giữa dữ liệu cảm biến và quyết
 định điều khiển. Task này tính \texttt{alert\_level} từ \texttt{IaqState}, đồng thời giữ
-lại trạng thái thiết bị hiện thời nếu hệ thống đang ở manual mode. Nhờ đó, hệ thống vẫn
+lại trạng thái thiết bị hiện thời nếu hệ thống đang ở chế độ thủ công. Nhờ đó, hệ thống vẫn
 có thể tiếp tục đánh giá cảnh báo mà không ghi đè quyết định điều khiển thủ công của
 người dùng.
 
 \subsection{Luồng telemetry từ ESP32 lên backend}
 
 Sau khi dữ liệu được xử lý, firmware ánh xạ từ \texttt{SensorSample} sang
-\texttt{SensorData\_t} và sau đó sang payload JSON để publish qua MQTT. Các quy ước dữ
-liệu thiếu được giữ thống nhất với contract chung: nhiệt độ và độ ẩm lỗi được đưa về
+\texttt{SensorData\_t} và sau đó sang payload JSON để gửi qua MQTT. Các quy ước dữ
+liệu thiếu được giữ thống nhất với định dạng dữ liệu chung: nhiệt độ và độ ẩm lỗi được đưa về
 \texttt{NAN}, PM2.5 lỗi thành \texttt{-1}, CO\textsubscript{2} lỗi thành \texttt{0xFFFF}.
 Timestamp được tạo bằng \texttt{esp\_timer\_get\_time()} để biểu diễn thời gian tương đối
 kể từ lúc thiết bị khởi động.
@@ -115,11 +115,11 @@ kể từ lúc thiết bị khởi động.
     \end{tabularx}
 \end{table}
 
-Backend đọc cùng contract dữ liệu qua \texttt{common/data\_format.json}, nhờ đó firmware,
+Backend đọc cùng quy ước định dạng dữ liệu qua \texttt{common/data\_format.json}, nhờ đó firmware,
 MQTT service, database và dashboard cùng dùng một cấu trúc payload thống nhất. Điều này
 giúp giảm sai lệch giữa các tầng và đơn giản hóa việc kiểm thử tích hợp.
 
-\subsection{MQTT contract và luồng điều khiển}
+\subsection{Định dạng MQTT và luồng điều khiển}
 
 Trong hệ thống hiện tại, ba topic MQTT chính được sử dụng cho telemetry, trạng thái
 thiết bị và lệnh điều khiển.
@@ -131,8 +131,8 @@ thiết bị và lệnh điều khiển.
         \toprule
         Topic & Hướng & Vai trò \\
         \midrule
-        \texttt{iot/sensor/data} & ESP32 \(\rightarrow\) backend & Telemetry định kỳ từ firmware \\
-        \texttt{iot/device/status} & ESP32 \(\rightarrow\) backend & ACK hoặc trạng thái sau khi xử lý command \\
+        \texttt{iot/sensor/data} & ESP32 \(\rightarrow\) backend & Dữ liệu telemetry định kỳ từ firmware \\
+        \texttt{iot/device/status} & ESP32 \(\rightarrow\) backend & ACK hoặc trạng thái sau khi xử lý lệnh điều khiển \\
         \texttt{iot/device/control} & Backend \(\rightarrow\) ESP32 & Lệnh điều khiển từ API/dashboard \\
         \bottomrule
     \end{tabularx}
@@ -141,20 +141,21 @@ thiết bị và lệnh điều khiển.
 Ở chiều điều khiển, dashboard gọi REST API, backend kiểm tra request rồi publish payload
 JSON xuống \texttt{iot/device/control}. Callback MQTT trên ESP32 chỉ sao chép payload vào
 \texttt{xControlQueue}; việc phân tích JSON và thực thi lệnh được chuyển sang
-\texttt{vTaskControl}. Cách tổ chức này giúp tránh làm callback mạng trở nên phức tạp và
+\texttt{vTaskControl}. Cách tổ chức này giúp tránh làm callback MQTT trở nên phức tạp và
 giữ rõ ranh giới giữa tầng truyền thông với tầng điều khiển.
 
-\begin{table}[H]
+\begin{table}[!htbp]
     \centering
     \caption{Nhóm lệnh điều khiển được firmware hỗ trợ}
-    \begin{tabularx}{\textwidth}{>{\bfseries}l X}
+    \small
+    \begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{0.36\textwidth} >{\raggedright\arraybackslash}X}
         \toprule
         Lệnh & Vai trò \\
         \midrule
-        \texttt{GET\_STATUS}, \texttt{GET\_AUTO} & Trả về trạng thái runtime hiện tại \\
-        \texttt{SET\_AUTO} & Bật/tắt chế độ auto-control và lưu vào NVS \\
-        \texttt{SET\_DEVICE} & Điều khiển từng thiết bị khi firmware đang ở manual mode \\
-        \texttt{GET\_THRESHOLDS} & Publish cấu hình ngưỡng hiện tại lên status topic \\
+        \texttt{GET\_STATUS}, \texttt{GET\_AUTO} & Trả về trạng thái vận hành hiện tại \\
+        \texttt{SET\_AUTO} & Bật/tắt chế độ điều khiển tự động và lưu vào NVS \\
+        \texttt{SET\_DEVICE} & Điều khiển từng thiết bị khi firmware đang ở chế độ thủ công \\
+        \texttt{GET\_THRESHOLDS} & Gửi cấu hình ngưỡng hiện tại lên status topic \\
         \texttt{SET\_THRESHOLDS} & Cập nhật ngưỡng, kiểm tra hysteresis, lưu NVS và tăng \texttt{config\_version} \\
         \texttt{RESET\_THRESHOLDS} & Khôi phục ngưỡng mặc định \\
         \texttt{REBOOT} & Publish ACK rồi khởi động lại ESP32 \\
@@ -163,21 +164,21 @@ giữ rõ ranh giới giữa tầng truyền thông với tầng điều khiển
 \end{table}
 
 Một chính sách an toàn quan trọng được đặt ở phía firmware: khi
-\texttt{auto\_control\_enabled} đang bật, các lệnh manual điều khiển thiết bị sẽ bị từ
+\texttt{auto\_control\_enabled} đang bật, các lệnh điều khiển thủ công sẽ bị từ
 chối. Cơ chế này tránh việc dashboard vô tình ghi đè quyết định xử lý cục bộ đang được
 thuật toán IAQ yêu cầu kích hoạt.
 
 \subsection{Cấu hình ngưỡng và vận hành khi mất kết nối}
 
 Ngưỡng điều khiển được lưu trong \texttt{ThresholdConfig}. Khi nhận lệnh
-\texttt{SET\_THRESHOLDS}, firmware tạo cấu hình tạm, kiểm tra quan hệ hysteresis, cập
+\texttt{SET\_THRESHOLDS}, firmware tạo cấu hình tạm, kiểm tra điều kiện hysteresis, cập
 nhật \texttt{IaqEvaluator} rồi lưu xuống NVS. Nếu lưu thất bại, hệ thống rollback về cấu
 hình trước đó. Cách làm này giúp các thiết lập từ dashboard không bị mất sau khi ESP32
 khởi động lại.
 
 Thiết kế hiện tại cũng không phụ thuộc hoàn toàn vào server. Nếu Wi-Fi hoặc MQTT mất kết
 nối, các task đọc cảm biến, xử lý IAQ, cảnh báo và điều khiển cục bộ vẫn tiếp tục chạy.
-\texttt{vTaskMQTT} chỉ đảm nhiệm việc định kỳ thử kết nối lại và tiếp tục publish khi hạ
+\texttt{vTaskMQTT} chỉ đảm nhiệm việc định kỳ thử kết nối lại và tiếp tục gửi dữ liệu khi hạ
 tầng mạng phục hồi. Giới hạn hiện tại là firmware chưa có hàng đợi lưu lịch sử offline để
 đẩy bù dữ liệu cũ; dữ liệu lịch sử chính vẫn được lưu ở MySQL sau khi backend nhận được
 MQTT.
