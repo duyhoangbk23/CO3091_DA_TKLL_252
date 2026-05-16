@@ -1,5 +1,5 @@
 \noindent
-Đề tài xây dựng một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí trong nhà (IAQ). Hệ thống gồm thiết bị nhúng ESP32, firmware đọc cảm biến, tầng RTOS/IoT truyền dữ liệu, backend server, cơ sở dữ liệu và dashboard web.
+Đề tài xây dựng một hệ thống IoT RTOS giám sát và điều chỉnh chất lượng không khí trong phòng học. Hệ thống gồm thiết bị nhúng ESP32, firmware đọc cảm biến, tầng RTOS/IoT truyền dữ liệu, backend server, cơ sở dữ liệu và dashboard web.
 
 \noindent
 Phần firmware hiện tại đọc bụi mịn PMS7003 qua UART, CO2 và nhiệt độ/độ ẩm qua RS485 Modbus, VOC qua ADC, sau đó chuẩn hóa dữ liệu thành \texttt{SensorSample}. Dữ liệu được đánh giá bởi \texttt{IaqEvaluator} theo vùng an toàn/cần can thiệp/cảnh báo, áp dụng hysteresis và hold-time để giảm dao động, rồi điều khiển LED hoặc thiết bị mô phỏng qua \texttt{IaqController}. Hệ thống cũng ghi CSV vào SPIFFS để phục vụ kiểm thử.
